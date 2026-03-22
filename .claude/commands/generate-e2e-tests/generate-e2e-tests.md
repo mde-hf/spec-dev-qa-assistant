@@ -8,7 +8,9 @@ mode: single-agent
 # Generate Tests from Acceptance Criteria (Multi-Framework)
 
 ## Purpose
-Generate automated tests from acceptance criteria with support for multiple testing frameworks and test types (E2E, API, unit, integration, visual).
+Generate automated tests from acceptance criteria based on your code implementation. This command scans your implemented code for selectors, components, and structure, then generates tests that match your actual implementation.
+
+**⚠️ Important:** Run this AFTER implementing your feature, not before. The command scans your code to generate accurate tests.
 
 ## Workflow
 
@@ -20,36 +22,37 @@ Read AC from: `.ac-verification/$TICKET/ac-checklist.md`
 
 ### Step 2: Smart Selector Scan (Automatic)
 
-**Automatically run selector scan before test generation:**
+**Automatically scans YOUR IMPLEMENTED CODE for selectors:**
 
 Display:
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔍 Scanning for Selectors...
+🔍 Scanning Your Code for Selectors...
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-Execute smart selector scan:
+Execute smart selector scan on your implementation:
 ```bash
-# Internally runs selector scanning logic
+# Scans your actual code
 → Scans src/ for data-testid, data-cy, testID, aria-label
-→ Builds selector map
+→ Finds selectors YOU added to your components
+→ Builds selector map from YOUR code
 → Detects patterns and naming conventions
-→ Identifies missing selectors
+→ Identifies components you implemented
 ```
 
 Show results:
 ```
 ✅ Selector Scan Complete
 
-Found: 342 selectors
+Found: 342 selectors in your code
   • Buttons: 45
   • Inputs: 78
   • Forms: 23
   • Pages: 12
 
 Quality: 87% coverage
-Missing: 52 elements need selectors
+Missing: 52 elements need selectors in your implementation
 
 Selector map saved: .ac-verification/selectors.json
 ```
@@ -57,8 +60,8 @@ Selector map saved: .ac-verification/selectors.json
 If quality is low (<70%), warn:
 ```
 ⚠️ Selector coverage is low (52%)
-Some tests may use generic selectors.
-Consider running: /fix-selectors to improve coverage
+Your implementation is missing test selectors.
+Consider adding data-testid attributes to key elements.
 ```
 
 ### Step 3: Scan Repository & Detect Stack

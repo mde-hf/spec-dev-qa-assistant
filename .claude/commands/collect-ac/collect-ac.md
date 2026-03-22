@@ -448,8 +448,8 @@ Detection Confidence: ⭐⭐⭐⭐⭐ High
 📝 Next Steps:
   1. Review: .ac-verification/EPS-1234/ac-checklist.md
   2. Create branch: git checkout -b feature/EPS-1234
-  3. Generate tests: /generate-e2e-tests EPS-1234
-  4. Implement feature
+  3. Implement feature (write your code)
+  4. Generate tests: /generate-e2e-tests EPS-1234
   5. Verify: /verify-ac EPS-1234
 
 ✅ AC checklist saved to: .ac-verification/EPS-1234/
