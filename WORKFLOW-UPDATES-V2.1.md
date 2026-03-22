@@ -65,7 +65,14 @@ Based on your feedback, I've updated the workflow:
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 2: Generate Tests
+# STEP 2: Implement Feature
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# ... write your code to satisfy the ACs ...
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# STEP 3: Generate Tests
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /generate-e2e-tests EPS-1234
@@ -83,17 +90,10 @@ What happens automatically:
      "Select: 1. Playwright ✅, 2. Jest ✅, 3. Supertest ✅"
      You pick: "1,3"
   
-  4. ✅ Generates tests using REAL selectors:
+  4. ✅ Generates tests using REAL selectors from your code:
      - tests/e2e/EPS-1234.spec.ts (Playwright)
      - tests/api/EPS-1234.test.ts (Supertest)
-     Uses: [data-testid="submit-button"] ← from scan
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 3: Implement Feature
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-# ... write your code ...
+     Uses: [data-testid="submit-button"] ← from your implementation
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -80,14 +80,15 @@ That's it! 🎉
 → Extracts user flows and interactions
 → Merges with existing ACs
 
-# 3️⃣ Generate tests
-/generate-e2e-tests EPS-1234
-→ Auto scans for selectors
-→ Asks which framework (Playwright, Cypress, Jest)
-→ Generates comprehensive test suite
-
-# 4️⃣ Implement your feature
+# 3️⃣ Implement your feature
 # ... write your code ...
+# Build the feature according to ACs
+
+# 4️⃣ Generate tests for your implementation
+/generate-e2e-tests EPS-1234
+→ Auto scans for selectors in your code
+→ Asks which framework (Playwright, Cypress, Jest)
+→ Generates tests based on your implementation + ACs
 
 # 5️⃣ Run tests
 npx playwright test
@@ -237,11 +238,16 @@ Tracks across sprints:
 /collect-ac EPS-5678
 → Found 3 ACs from JIRA
 
-/generate-e2e-tests EPS-5678
-→ Select framework: 1 (Playwright)
-→ Generated 3 E2E tests
+# Implement the feature
+# ... write code to satisfy the ACs ...
 
-# Implement feature, run tests
+/generate-e2e-tests EPS-5678
+→ Scans your implementation
+→ Select framework: 1 (Playwright)
+→ Generated 3 E2E tests based on your code
+
+# Run tests
+npx playwright test
 
 /verify-ac EPS-5678
 → All passed ✅
@@ -259,11 +265,15 @@ Tracks across sprints:
 → Added 4 interaction ACs from Figma
 → Total: 9 ACs
 
+# Implement the feature
+# ... write code for all 9 ACs ...
+
 /generate-e2e-tests EPS-9012
-→ Scanned selectors: 87% coverage
+→ Scanned selectors: 87% coverage in your code
 → Generated 9 tests (Playwright + Jest)
 
-# Implement, test
+# Run tests
+npx playwright test
 
 /verify-ac EPS-9012
 → 8 passed, 1 needs QA
