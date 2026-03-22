@@ -1,0 +1,48 @@
+# System files
+.DS_Store
+*.log
+
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*secret*
+*credentials*
+.claude.json
+config.local.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing artifacts
+.ac-verification/*/
+!.ac-verification/.gitkeep
+test-results/
+playwright-report/
+coverage/
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo
+
+# Temp files
+temp/
+tmp/
+*.tmp
+
+# Project-specific
+spec-machine/config.yml
+specs/
+tests/google-homepage.spec.ts
+playwright.config.ts
+package.json
