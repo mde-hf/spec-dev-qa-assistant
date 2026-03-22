@@ -1,6 +1,6 @@
-# Dev QA Assistant
+# Spec Dev QA Assistant
 
-> Your AI-powered QA assistant for Claude Code
+> Your AI-powered QA assistant for spec-machine and Claude Code
 
 Automate your entire QA workflow from acceptance criteria to verified tests with JIRA integration and quality tracking.
 
@@ -8,7 +8,7 @@ Automate your entire QA workflow from acceptance criteria to verified tests with
 
 ## 🎯 What It Does
 
-**Dev QA Assistant** streamlines your testing workflow by automating:
+**Spec Dev QA Assistant** streamlines your testing workflow by automating:
 
 - ✅ **Multi-source AC Detection** - Automatically fetch ACs from JIRA, Confluence, and Figma
 - ✅ **Automated Test Generation** - Generate E2E, API, and unit tests from acceptance criteria
@@ -26,15 +26,15 @@ Automate your entire QA workflow from acceptance criteria to verified tests with
 ### 1. Clone the Repository
 
 ```bash
-git clone git@github.com:hellofresh/dev-qa-assistant.git
-cd dev-qa-assistant
+git clone git@github.com:mde-hf/spec-dev-qa-assistant.git
+cd spec-dev-qa-assistant
 ```
 
 ### 2. Install to Your Project
 
 ```bash
 cd ~/your-project
-cp -r ~/dev-qa-assistant/.claude .
+cp -r ~/spec-dev-qa-assistant/.claude .
 ```
 
 ### 3. Restart Claude Code
@@ -324,16 +324,16 @@ Found a bug? Have a suggestion? Want to add a feature?
 
 1. Create an issue
 2. Submit a PR
-3. Share feedback in #dev-qa-assistant
+3. Share feedback in #spec-dev-qa-assistant
 
 ---
 
 ## 📞 Support
 
-- **Slack:** #dev-qa-assistant (coming soon)
-- **Issues:** GitHub Issues
-- **Docs:** See `docs/` directory
-- **Questions:** Tag @your-name in Slack
+- **Slack:** #spec-dev-qa-assistant (coming soon)
+- **Issues:** https://github.com/mde-hf/spec-dev-qa-assistant/issues
+- **Docs:** See documentation files in repo
+- **Questions:** Tag @mde-hf in Slack
 
 ---
 
