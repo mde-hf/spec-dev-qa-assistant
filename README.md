@@ -12,10 +12,12 @@ Automate your entire QA workflow from acceptance criteria to verified tests with
 
 - ✅ **Multi-source AC Detection** - Automatically fetch ACs from JIRA, Confluence, and Figma
 - ✅ **Automated Test Generation** - Generate E2E, API, and unit tests from acceptance criteria
+- ✅ **Platform Support** - Works with Web (Playwright, Cypress) and Mobile React Native (Maestro, Detox)
 - ✅ **Smart Selector Scanning** - Map test selectors across your codebase
 - ✅ **Interactive Verification** - Step-by-step AC verification with test execution
 - ✅ **JIRA Integration** - Post verification results directly to tickets
 - ✅ **Quality Tracking** - Track team performance and identify trends over time
+- ✅ **spec-machine Integration** - Works seamlessly with HelloFresh's spec-machine for complete workflow
 
 **Time Saved:** ~2 hours per ticket on average
 
@@ -57,21 +59,42 @@ That's it! 🎉
 | Command | Description |
 |---------|-------------|
 | `/collect-ac` | Collect acceptance criteria from JIRA, Confluence, and Figma |
-| `/generate-e2e-tests` | Generate automated tests (Playwright, Cypress, Jest, etc.) |
+| `/generate-e2e-tests` | Generate automated tests (Web: Playwright/Cypress, Mobile: Maestro/Detox) |
 | `/verify-ac` | Interactively verify each acceptance criterion |
 | `/post-to-jira` | Post verification results to JIRA ticket (auto-prompted after verify) |
 | `/figma-ac-extractor` | Extract user flow ACs from Figma designs |
 | `/smart-selector-scan` | Scan codebase for test selectors (auto-runs with generate-e2e-tests) |
 | `/ac-quality-trends` | Track quality metrics across sprints |
 
+### **Integrates with spec-machine:**
+
+| spec-machine Command | When to Use |
+|---------------------|-------------|
+| `/analyze-tech-stack` | One-time setup: Analyze project dependencies |
+| `/train-context` | One-time setup: Train on repo patterns |
+| `/jira-gather-requirements` | Before `/collect-ac`: Fetch ticket requirements |
+| `/create-pr` | After `/verify-ac`: Create PR with JIRA link & labels |
+| `/a11y-check` | Optional: Check Figma design accessibility |
+
 ---
 
 ## 🔄 Complete Workflow
 
+### **Prerequisites (One-Time Setup)**
+
 ```bash
-# 1️⃣ Collect acceptance criteria
-/collect-ac EPS-1234
-→ Fetches ACs from JIRA + Confluence + Figma
+# Setup spec-machine context (if using spec-machine)
+/analyze-tech-stack         # Analyze project dependencies
+/train-context              # Train on your repo patterns
+```
+
+### **Per-Ticket Workflow**
+
+```bash
+# 1️⃣ Gather requirements and acceptance criteria
+/jira-gather-requirements EPS-1234  # spec-machine: Fetch ticket & requirements
+/collect-ac EPS-1234                # Collect ACs from JIRA + Confluence + Figma
+→ Fetches ACs from all sources
 → Smart detection with confidence scoring
 → Creates AC checklist
 
@@ -80,30 +103,39 @@ That's it! 🎉
 → Extracts user flows and interactions
 → Merges with existing ACs
 
-# 3️⃣ Implement your feature
+# 3️⃣ Create branch (if not already)
+git checkout -b feature/EPS-1234-description
+
+# 4️⃣ Implement your feature
 # ... write your code ...
 # Build the feature according to ACs
 
-# 4️⃣ Generate tests for your implementation
+# 5️⃣ Generate tests for your implementation
 /generate-e2e-tests EPS-1234
+→ Select platform: Web or Mobile React Native
 → Auto scans for selectors in your code
-→ Asks which framework (Playwright, Cypress, Jest)
+→ Choose framework (Playwright/Maestro/etc.)
 → Generates tests based on your implementation + ACs
 
-# 5️⃣ Run tests
-npx playwright test
-npm test
+# 6️⃣ Run tests
+npx playwright test                     # Web
+# or
+maestro test .maestro/EPS-1234.yaml     # React Native
 
-# 6️⃣ Verify ACs
+# 7️⃣ Verify ACs
 /verify-ac EPS-1234
 → Interactive verification
 → Test status tracking
 → Asks: "Post to JIRA?" → Auto-posts results
 
-# 7️⃣ Create PR
-gh pr create
+# 8️⃣ Create PR with full context
+/create-pr  # spec-machine: Creates PR with JIRA link, labels, template
+→ Links JIRA ticket automatically
+→ Uses repo's PR template
+→ Applies correct labels
+→ Follows team conventions
 
-# 8️⃣ (End of sprint) Track quality
+# 9️⃣ (End of sprint) Track quality
 /ac-quality-trends --sprint "Sprint 24"
 → See pass rates, velocity, issues
 → Developer leaderboard
