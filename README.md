@@ -19,8 +19,6 @@ Automate your entire QA workflow from acceptance criteria to verified tests with
 - ✅ **Quality Tracking** - Track team performance and identify trends over time
 - ✅ **spec-machine Integration** - Works seamlessly with HelloFresh's spec-machine for complete workflow
 
-**Time Saved:** ~2 hours per ticket on average
-
 ---
 
 ## 🚀 Quick Start (5 minutes)
