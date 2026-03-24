@@ -14,18 +14,35 @@ Automatically post AC verification results back to the JIRA ticket as a comment,
 
 ## Prerequisites
 
-Check for JIRA CLI:
+Check for JIRA CLI and authentication:
 ```bash
-which jira
-```
-
-If not installed, show error:
-```
-❌ JIRA CLI not found
-
-Install: brew install ankitpokhrel/jira-cli/jira-cli
-Configure: jira init
-Set token: export JIRA_API_TOKEN="your-token"
+# Check if JIRA CLI is installed
+if which jira >/dev/null 2>&1; then
+  # Check if authenticated
+  if jira me >/dev/null 2>&1; then
+    echo "✅ JIRA CLI ready"
+  else
+    echo "❌ JIRA CLI not authenticated"
+    echo ""
+    echo "Please authenticate:"
+    echo "  1. Run: jira init"
+    echo "  2. Or run: /setup-qa-assistant"
+    echo ""
+    echo "You'll need:"
+    echo "  • JIRA URL: https://yourcompany.atlassian.net"
+    echo "  • API Token: https://id.atlassian.com/manage-profile/security/api-tokens"
+    exit 1
+  fi
+else
+  echo "❌ JIRA CLI not found"
+  echo ""
+  echo "Install and configure:"
+  echo "  1. Run: /setup-qa-assistant"
+  echo "  2. Or manually:"
+  echo "     brew install ankitpokhrel/jira-cli/jira-cli"
+  echo "     jira init"
+  exit 1
+fi
 ```
 
 ## Workflow

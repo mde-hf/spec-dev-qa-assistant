@@ -15,10 +15,46 @@ Initialize a task by intelligently fetching acceptance criteria from multiple so
 
 ## Prerequisites Check
 
-Check for integrations:
-- JIRA CLI: `which jira`
-- Confluence MCP: Check if Atlassian MCP is available
-- Google Docs MCP: Check if Google Workspace MCP is available
+Check for integrations and authentication:
+
+**JIRA CLI:**
+```bash
+# Check if JIRA CLI is installed
+if which jira >/dev/null 2>&1; then
+  # Check if authenticated
+  if jira me >/dev/null 2>&1; then
+    echo "✅ JIRA CLI authenticated"
+    JIRA_AVAILABLE=true
+  else
+    echo "⚠️ JIRA CLI not authenticated"
+    echo "   Run: jira init"
+    echo "   Or: /setup-qa-assistant"
+    JIRA_AVAILABLE=false
+  fi
+else
+  echo "⚠️ JIRA CLI not installed"
+  echo "   Run: /setup-qa-assistant"
+  JIRA_AVAILABLE=false
+fi
+```
+
+**Confluence MCP:**
+- Check if Atlassian MCP is available
+
+**Google Docs MCP:**
+- Check if Google Workspace MCP is available
+
+**If no sources available:**
+```
+⚠️ No integration sources available
+
+You can:
+  1. Install JIRA CLI: /setup-qa-assistant
+  2. Enter ACs manually (I'll guide you)
+  3. Paste from Confluence/Google Docs
+
+Continue anyway? (Y/n)
+```
 
 ## Workflow
 
