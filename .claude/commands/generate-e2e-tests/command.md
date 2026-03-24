@@ -61,24 +61,31 @@ Ask user: "What's your JIRA ticket number? (e.g., EPS-1234)"
 
 Read AC from: `.ac-verification/$TICKET/ac-checklist.md`
 
-### Step 2: Choose Platform
+### Step 3: Choose Platform First
 
-Ask user: "What platform are you testing?"
+**Before scanning or detecting frameworks, ask the user what they're testing:**
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Select Platform
+🎯 Select Testing Platform
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. 🌐 Web (Browser-based)
+What platform are you testing?
+
+1. 🌐 Web (Browser-based applications)
+   Frameworks: Playwright, Cypress, Jest, Vitest
+   
 2. 📱 Mobile (React Native)
+   Frameworks: Maestro, Detox, Appium
 
 Choose platform (1 or 2):
 ```
 
-**Store platform choice for later steps.**
+**Store platform choice:** `PLATFORM = "web" or "mobile"`
 
-### Step 3: Smart Selector Scan (Automatic)
+This determines which frameworks to show in the next step.
+
+### Step 4: Smart Selector Scan (Automatic)
 
 **Automatically scans YOUR IMPLEMENTED CODE for selectors:**
 
@@ -162,7 +169,7 @@ Consider adding testID to key components:
 <Button testID="submit-button" />
 ```
 
-### Step 4: Scan Repository & Detect Stack
+### Step 5: Scan Repository & Detect Stack
 
 Analyze codebase:
 
@@ -231,17 +238,17 @@ Selectors: testID props (78% coverage)
 Platforms: iOS, Android
 ```
 
-### Step 5: Choose Test Framework (User Selection)
+### Step 6: Choose Test Framework (Based on Platform)
+
+**Now show framework options based on the platform selected in Step 3:**
 
 Ask user: "Which test framework do you want to use?"
 
-**Show detected + recommended options based on platform:**
-
-**For Web (Platform 1):**
+**If user selected Web (Platform 1):**
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Select Web Test Framework
+🌐 Select Web Test Framework
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Detected in your project:
@@ -250,7 +257,7 @@ Detected in your project:
   3. ✅ Supertest (installed)      - For API tests
 
 Not installed (available):
-  4. Cypress - Alternative E2E
+  4. Cypress - Alternative E2E framework
   5. Vitest - Modern unit testing
   6. React Testing Library - Component tests
 
@@ -258,24 +265,25 @@ Choose one or more (comma separated):
 Example: 1,2,3 for Playwright + Jest + Supertest
 ```
 
-**For Mobile React Native (Platform 2):**
+**If user selected Mobile React Native (Platform 2):**
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Select Mobile Test Framework
+📱 Select Mobile Test Framework
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Recommended for React Native:
-  1. 🎯 Maestro (recommended)      - Simple YAML-based tests
+  1. 🎯 Maestro (recommended)      - Simple YAML-based E2E tests
   2. Detox                        - Built for React Native
   3. Appium                       - Cross-platform standard
-  4. React Native Testing Library - Component tests
+  4. Jest                         - For unit tests
+  5. React Native Testing Library - Component tests
 
 Detected in your project:
-  ✅ Jest (installed) - For unit tests
+  ✅ Jest (installed)
 
 Choose one or more (comma separated):
-Example: 1,4 for Maestro + React Native Testing Library
+Example: 1,5 for Maestro + React Native Testing Library
 ```
 
 **Smart defaults based on detection:**
@@ -319,7 +327,7 @@ Installation needed:
 Continue? (Y/n)
 ```
 
-### Step 5: Analyze Each AC & Suggest Test Types
+### Step 7: Analyze Each AC & Suggest Test Types
 
 For each AC, analyze and recommend test types:
 
@@ -389,7 +397,7 @@ AC #4: Page loads in under 2 seconds
   Frameworks: Lighthouse, Playwright
 ```
 
-### Step 6: Generate Tests Using Selector Map
+### Step 8: Generate Tests Using Selector Map
 
 **Use the selector map from Step 2:**
 
@@ -415,7 +423,7 @@ function getSelector(componentName) {
 }
 ```
 
-### Step 7: Generate Tests for Selected Frameworks
+### Step 9: Generate Tests for Selected Frameworks
 
 #### A. Playwright (E2E)
 
@@ -886,7 +894,7 @@ describe('LoginScreen - EPS-1234', () => {
 });
 ```
 
-### Step 9: Create Test Configuration Files
+### Step 10: Create Test Configuration Files
 
 #### playwright.config.ts
 ```typescript
@@ -924,7 +932,7 @@ export default defineConfig({
 });
 ```
 
-### Step 9: Create Test Documentation
+### Step 11: Create Test Documentation
 
 Create: `tests/e2e/EPS-1234-README.md`
 
@@ -991,7 +999,7 @@ npm run test:a11y
 - Axe: `a11y-report.html`
 ```
 
-### Step 10: Display Summary
+### Step 12: Display Summary
 
 **For Web:**
 
