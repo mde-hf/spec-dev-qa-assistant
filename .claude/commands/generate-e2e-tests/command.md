@@ -61,7 +61,143 @@ Ask user: "What's your JIRA ticket number? (e.g., EPS-1234)"
 
 Read AC from: `.ac-verification/$TICKET/ac-checklist.md`
 
-### Step 3: Choose Platform First
+### Step 3: Choose Test Source
+
+Ask user what to base the tests on:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📝 Select Test Source
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+What should the tests be based on?
+
+1. 📋 Acceptance Criteria (ACs)
+   Generate tests from acceptance criteria in ac-checklist.md
+   
+2. 🧪 X-Ray Test Cases
+   Generate tests from X-Ray test cases created earlier
+   
+3. 🧩 Specific Component
+   Generate tests for a specific component/file in the repo
+
+Choose source (1, 2, or 3):
+```
+
+**Store choice:** `TEST_SOURCE = "ac" | "xray" | "component"`
+
+**If user selects "1. Acceptance Criteria":**
+- Use ACs from `.ac-verification/$TICKET/ac-checklist.md`
+- Generate tests based on AC descriptions
+- Continue to Step 4
+
+**If user selects "2. X-Ray Test Cases":**
+- Check if X-Ray test mapping exists: `.ac-verification/$TICKET/xray-test-mapping.json`
+- If exists:
+  ```
+  ✅ Found X-Ray test cases:
+    • EPS-5678 - Verify email verification code request
+    • EPS-5679 - Verify verification email delivery time
+    • EPS-5680 - Verify code expiration after 15 minutes
+    • EPS-5681 - Verify success message after verification
+    • EPS-5682 - Verify invalid code error messages
+  
+  Fetching test case details from JIRA...
+  ```
+- Fetch full test case details using JIRA CLI:
+  ```bash
+  for testKey in ${TEST_KEYS[@]}; do
+    jira issue view $testKey --plain
+  done
+  ```
+- Extract test steps/scenarios from X-Ray test cases
+- Use these as basis for test generation
+- Continue to Step 4
+
+- If NOT exists:
+  ```
+  ⚠️ No X-Ray test cases found for $TICKET
+  
+  You can:
+    1. Create X-Ray test cases first: /create-xray-tests $TICKET
+    2. Use acceptance criteria instead (option 1)
+    3. Specify a component (option 3)
+  
+  Which option? (1, 2, or 3):
+  ```
+
+**If user selects "3. Specific Component":**
+- Ask: "Which component/file do you want to test?"
+  ```
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🧩 Select Component to Test
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  Enter component path or name:
+  Examples:
+    - src/components/EmailVerification.tsx
+    - EmailVerification
+    - src/pages/Profile
+  
+  Component path:
+  ```
+
+- Search for component in codebase:
+  ```bash
+  # Search for component
+  find src -name "*$COMPONENT*" -type f
+  ```
+
+- If multiple matches, show list and ask to select:
+  ```
+  Found multiple matches:
+    1. src/components/EmailVerification/EmailVerification.tsx
+    2. src/components/EmailVerification/index.tsx
+    3. src/pages/Profile/EmailVerification.tsx
+  
+  Choose component (1-3):
+  ```
+
+- Read component file and analyze:
+  - Extract props, functions, state
+  - Identify user interactions
+  - Find test IDs/selectors in component
+  - Understand component behavior
+
+- Display component analysis:
+  ```
+  ✅ Component Analysis Complete
+  
+  Component: EmailVerification.tsx
+  Location: src/components/EmailVerification/
+  
+  Props:
+    • email: string
+    • onVerify: (code: string) => void
+    • isLoading: boolean
+  
+  User Interactions:
+    • Input field for verification code
+    • Submit button
+    • Resend code button
+    
+  Test IDs Found:
+    • verification-code-input
+    • submit-verification-button
+    • resend-code-button
+    
+  Will generate tests for:
+    ✓ Entering verification code
+    ✓ Submitting verification
+    ✓ Resending code
+    ✓ Error handling
+    ✓ Loading states
+  ```
+
+- Use component analysis as basis for test generation
+- Continue to Step 4
+
+### Step 4: Choose Platform First
 
 **Before scanning or detecting frameworks, ask the user what they're testing:**
 
@@ -85,7 +221,7 @@ Choose platform (1 or 2):
 
 This determines which frameworks to show in the next step.
 
-### Step 4: Smart Selector Scan (Automatic)
+### Step 5: Smart Selector Scan (Automatic)
 
 **Automatically scans YOUR IMPLEMENTED CODE for selectors:**
 
@@ -169,7 +305,7 @@ Consider adding testID to key components:
 <Button testID="submit-button" />
 ```
 
-### Step 5: Scan Repository & Detect Stack
+### Step 6: Scan Repository & Detect Stack
 
 Analyze codebase:
 
@@ -238,7 +374,7 @@ Selectors: testID props (78% coverage)
 Platforms: iOS, Android
 ```
 
-### Step 6: Choose Test Framework (Based on Platform)
+### Step 7: Choose Test Framework (Based on Platform)
 
 **Now show framework options based on the platform selected in Step 3:**
 
@@ -327,7 +463,11 @@ Installation needed:
 Continue? (Y/n)
 ```
 
-### Step 7: Analyze Each AC & Suggest Test Types
+### Step 8: Analyze Test Source & Suggest Test Types
+
+**Based on the test source selected in Step 3:**
+
+**If TEST_SOURCE = "ac" (Acceptance Criteria):**
 
 For each AC, analyze and recommend test types:
 
@@ -374,6 +514,119 @@ function analyzeAC(ac) {
 }
 ```
 
+**If TEST_SOURCE = "xray" (X-Ray Test Cases):**
+
+For each X-Ray test case, analyze based on format:
+
+- **If BDD/Gherkin format:**
+  - Parse Given/When/Then steps
+  - Map to test scenarios
+  - Generate E2E tests for user flows
+  - Generate unit tests for business logic
+
+- **If Manual Test Steps format:**
+  - Parse test steps and expected results
+  - Convert manual steps to automated test actions
+  - Generate E2E tests for step-by-step flows
+  - Generate assertions for expected results
+
+```javascript
+function analyzeXRayTest(testCase) {
+  const testTypes = [];
+  
+  if (testCase.format === 'bdd') {
+    // Parse Gherkin scenarios
+    testTypes.push('E2E'); // Given/When/Then flows
+    if (hasBusinessLogic(testCase)) {
+      testTypes.push('Unit'); // Logic validation
+    }
+  } else if (testCase.format === 'manual') {
+    // Parse manual test steps
+    testTypes.push('E2E'); // Step-by-step automation
+    if (hasAPISteps(testCase)) {
+      testTypes.push('API'); // API validation
+    }
+  }
+  
+  return testTypes;
+}
+```
+
+Display:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Analyzing X-Ray Test Cases
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Test: EPS-5678 - Verify email verification code request
+Format: Manual Test Steps
+Recommended: E2E, Component
+
+Test: EPS-5679 - Verify verification email delivery time
+Format: Manual Test Steps
+Recommended: E2E, API, Performance
+
+Test: EPS-5680 - Verify code expiration after 15 minutes
+Format: BDD (Gherkin)
+Recommended: E2E, Unit
+
+...
+```
+
+**If TEST_SOURCE = "component" (Specific Component):**
+
+Analyze component and generate tests for:
+
+```javascript
+function analyzeComponent(component) {
+  const testTypes = [];
+  
+  // Always include component tests
+  testTypes.push('Component');
+  
+  // Check for user interactions → E2E
+  if (hasUserInteractions(component)) {
+    testTypes.push('E2E');
+  }
+  
+  // Check for business logic → Unit
+  if (hasBusinessLogic(component)) {
+    testTypes.push('Unit');
+  }
+  
+  // Check for API calls → Integration
+  if (hasAPIcalls(component)) {
+    testTypes.push('Integration');
+  }
+  
+  // Check for accessibility attributes → A11y
+  if (hasA11yAttributes(component)) {
+    testTypes.push('Accessibility');
+  }
+  
+  return testTypes;
+}
+```
+
+Display:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧩 Analyzing Component: EmailVerification.tsx
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Component Type: Form with validation
+User Interactions: Input, Submit, Resend
+API Calls: POST /api/verify-email
+Business Logic: Code validation, Timer countdown
+
+Recommended Test Types:
+  ✓ Component tests - Props, rendering, events
+  ✓ E2E tests - User flows
+  ✓ Integration tests - API integration
+  ✓ Unit tests - Validation logic, timer
+```
+```
+
 Display analysis:
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -397,7 +650,7 @@ AC #4: Page loads in under 2 seconds
   Frameworks: Lighthouse, Playwright
 ```
 
-### Step 8: Generate Tests Using Selector Map
+### Step 9: Generate Tests Using Selector Map
 
 **Use the selector map from Step 2:**
 
@@ -423,7 +676,7 @@ function getSelector(componentName) {
 }
 ```
 
-### Step 9: Generate Tests for Selected Frameworks
+### Step 10: Generate Tests for Selected Frameworks
 
 #### A. Playwright (E2E)
 
@@ -894,7 +1147,7 @@ describe('LoginScreen - EPS-1234', () => {
 });
 ```
 
-### Step 10: Create Test Configuration Files
+### Step 11: Create Test Configuration Files
 
 #### playwright.config.ts
 ```typescript
@@ -932,7 +1185,7 @@ export default defineConfig({
 });
 ```
 
-### Step 11: Create Test Documentation
+### Step 12: Create Test Documentation
 
 Create: `tests/e2e/EPS-1234-README.md`
 
@@ -999,7 +1252,7 @@ npm run test:a11y
 - Axe: `a11y-report.html`
 ```
 
-### Step 12: Display Summary
+### Step 13: Display Summary
 
 **For Web:**
 
