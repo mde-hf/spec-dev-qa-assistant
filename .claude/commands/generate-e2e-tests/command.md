@@ -55,298 +55,98 @@ If yes:
   npx playwright install
 ```
 
-### Step 2: Choose Starting Point
+### Step 2: What to Generate Tests For
 
-Ask user if they have a JIRA ticket or want to test a component directly:
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚀 Test Generation Starting Point
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-How would you like to start?
-
-1. 🎫 JIRA Ticket
-   Generate tests from JIRA ticket (ACs, X-Ray test cases)
-   
-2. 🧩 Component/Feature
-   Generate tests for a specific component or feature
-   (No JIRA ticket needed)
-
-Choose option (1 or 2):
-```
-
-**Store choice:** `STARTING_POINT = "jira" | "component"`
-
----
-
-**If user selects "1. JIRA Ticket":**
-
-Ask user: "What's your JIRA ticket number? (e.g., EPS-1234)"
-
-Store as `$TICKET`
-
-Read AC from: `.ac-verification/$TICKET/ac-checklist.md`
-
-**Then proceed to Step 3 (Choose Test Source)** with JIRA-based options.
-
----
-
-**If user selects "2. Component/Feature":**
-
-Skip JIRA ticket loading and ask for component details:
+Ask user what they want to generate tests for (accepts JIRA ticket OR component name):
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🧩 Component/Feature Details
+🧪 Generate E2E Tests
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Enter component name or path:
+What do you want to generate tests for?
+
 Examples:
-  - EmailVerification
-  - src/components/EmailVerification.tsx
-  - Login form
-  - User profile page
+  • JIRA ticket: EPS-1234
+  • Component: PremiumMealsActiveRewardCard.tsx
+  • Component path: src/components/PremiumMealsActiveRewardCard.tsx
+  • Feature: Login form validation
 
-Component:
+Enter ticket or component:
 ```
 
-Store as `$COMPONENT`
+**Parse user input:**
+
+```javascript
+function parseInput(input) {
+  // Check if it's a JIRA ticket (format: ABC-1234)
+  if (/^[A-Z]+-\d+$/i.test(input)) {
+    return {
+      type: 'jira',
+      value: input.toUpperCase()
+    };
+  }
+  
+  // Otherwise treat as component/feature
+  return {
+    type: 'component',
+    value: input
+  };
+}
+```
+
+**If JIRA ticket detected (e.g., "EPS-1234"):**
+- Store as `$TICKET`
+- Try to read AC from: `.ac-verification/$TICKET/ac-checklist.md`
+- If exists: Show AC summary
+- If NOT exists: Offer to run `/collect-ac $TICKET` first, or continue without ACs
+- Set `TEST_SOURCE = "jira"`
+- Ask if they want to test specific component within ticket or use ACs
+
+**If component/feature detected (e.g., "PremiumMealsActiveRewardCard.tsx"):**
+- Store as `$COMPONENT`
+- Set `TEST_SOURCE = "component"`
+- Search for component in codebase:
+  ```bash
+  find src -name "*$COMPONENT*" -type f 2>/dev/null | grep -E '\.(tsx?|jsx?|vue|svelte)$'
+  ```
+
+Display found component:
+```
+✅ Found Component
+
+Component: PremiumMealsActiveRewardCard.tsx
+Location: src/components/rewards/PremiumMealsActiveRewardCard.tsx
+
+Continue with this component? (Y/n)
+```
+
+If multiple matches, show list and ask to select.
 
 **Then ask for test description (free text):**
-
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📝 What Should Be Tested?
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Describe what you want to test (free text):
+Describe what you want to test (optional - press Enter to skip):
 
 Examples:
-  - "Test user can enter email and click send verification code"
-  - "Test form validation, submission, and error handling"
-  - "Test navigation between login and signup"
-  - "Test all user interactions and state changes"
+  - "Test card displays reward information correctly"
+  - "Test click interaction opens reward details"
+  - "Test loading and error states"
+  - Leave blank to auto-detect from component
 
 What to test:
 ```
 
 Store as `$TEST_DESCRIPTION`
 
-**Then search for component in codebase:**
+If blank, will auto-analyze component for test scenarios.
 
-```bash
-# Search for component
-find src -name "*$COMPONENT*" -type f 2>/dev/null | grep -E '\.(tsx?|jsx?|vue|svelte)$'
-```
+### Step 3: Choose Platform
 
-If multiple matches found:
-```
-Found multiple matches:
-  1. src/components/EmailVerification/EmailVerification.tsx
-  2. src/components/EmailVerification/index.tsx
-  3. src/pages/Profile/EmailVerification.tsx
-
-Choose component (1-3):
-```
-
-If no matches found:
-```
-⚠️ Component not found in codebase
-
-Options:
-  1. Enter a different component name/path
-  2. Continue anyway (will generate generic tests)
-
-Choose option (1 or 2):
-```
-
-**Read and analyze component:**
-- Extract props, functions, state
-- Identify user interactions
-- Find test IDs/selectors
-- Understand component behavior
-
-Display analysis:
-```
-✅ Component Analysis Complete
-
-Component: EmailVerification.tsx
-Location: src/components/EmailVerification/
-
-Props:
-  • email: string
-  • onVerify: (code: string) => void
-  • isLoading: boolean
-
-User Interactions:
-  • Input field for verification code
-  • Submit button
-  • Resend code button
-
-Test IDs Found:
-  • verification-code-input
-  • submit-verification-button
-  • resend-code-button
-
-Test Description:
-  "Test user can enter email and click send verification code"
-
-Will generate tests for:
-  ✓ Entering verification code (from test description)
-  ✓ Clicking submit button (from test description)
-  ✓ Resending code (from component analysis)
-  ✓ Form validation (from component analysis)
-  ✓ Loading states (from component analysis)
-```
-
-**Skip to Step 4 (Choose Platform)** - No need for "Choose Test Source" step.
-
----
-
-### Step 3: Choose Test Source (Only for JIRA Ticket flow)
-
-**This step is SKIPPED if user selected "Component/Feature" in Step 2.**
-
-**Only runs if STARTING_POINT = "jira":**
-
-Ask user what to base the tests on:
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📝 Select Test Source (JIRA Ticket: $TICKET)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-What should the tests be based on?
-
-1. 📋 Acceptance Criteria (ACs)
-   Generate tests from acceptance criteria in ac-checklist.md
-   
-2. 🧪 X-Ray Test Cases
-   Generate tests from X-Ray test cases created earlier
-   
-3. 🧩 Specific Component (within this ticket)
-   Generate tests for a specific component/file
-
-Choose source (1, 2, or 3):
-```
-
-**Store choice:** `TEST_SOURCE = "ac" | "xray" | "component"`
-
-**If user selects "1. Acceptance Criteria":**
-- Use ACs from `.ac-verification/$TICKET/ac-checklist.md`
-- Generate tests based on AC descriptions
-- Continue to Step 4
-
-**If user selects "2. X-Ray Test Cases":**
-- Check if X-Ray test mapping exists: `.ac-verification/$TICKET/xray-test-mapping.json`
-- If exists:
-  ```
-  ✅ Found X-Ray test cases:
-    • EPS-5678 - Verify email verification code request
-    • EPS-5679 - Verify verification email delivery time
-    • EPS-5680 - Verify code expiration after 15 minutes
-    • EPS-5681 - Verify success message after verification
-    • EPS-5682 - Verify invalid code error messages
-  
-  Fetching test case details from JIRA...
-  ```
-- Fetch full test case details using JIRA CLI:
-  ```bash
-  for testKey in ${TEST_KEYS[@]}; do
-    jira issue view $testKey --plain
-  done
-  ```
-- Extract test steps/scenarios from X-Ray test cases
-- Use these as basis for test generation
-- Continue to Step 4
-
-- If NOT exists:
-  ```
-  ⚠️ No X-Ray test cases found for $TICKET
-  
-  You can:
-    1. Create X-Ray test cases first: /create-xray-tests $TICKET
-    2. Use acceptance criteria instead (option 1)
-    3. Specify a component (option 3)
-  
-  Which option? (1, 2, or 3):
-  ```
-
-**If user selects "3. Specific Component":**
-- Ask: "Which component/file do you want to test?"
-  ```
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  🧩 Select Component to Test
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  
-  Enter component path or name:
-  Examples:
-    - src/components/EmailVerification.tsx
-    - EmailVerification
-    - src/pages/Profile
-  
-  Component path:
-  ```
-
-- Search for component in codebase:
-  ```bash
-  # Search for component
-  find src -name "*$COMPONENT*" -type f
-  ```
-
-- If multiple matches, show list and ask to select:
-  ```
-  Found multiple matches:
-    1. src/components/EmailVerification/EmailVerification.tsx
-    2. src/components/EmailVerification/index.tsx
-    3. src/pages/Profile/EmailVerification.tsx
-  
-  Choose component (1-3):
-  ```
-
-- Read component file and analyze:
-  - Extract props, functions, state
-  - Identify user interactions
-  - Find test IDs/selectors in component
-  - Understand component behavior
-
-- Display component analysis:
-  ```
-  ✅ Component Analysis Complete
-  
-  Component: EmailVerification.tsx
-  Location: src/components/EmailVerification/
-  
-  Props:
-    • email: string
-    • onVerify: (code: string) => void
-    • isLoading: boolean
-  
-  User Interactions:
-    • Input field for verification code
-    • Submit button
-    • Resend code button
-    
-  Test IDs Found:
-    • verification-code-input
-    • submit-verification-button
-    • resend-code-button
-    
-  Will generate tests for:
-    ✓ Entering verification code
-    ✓ Submitting verification
-    ✓ Resending code
-    ✓ Error handling
-    ✓ Loading states
-  ```
-
-- Use component analysis as basis for test generation
-- Continue to Step 4
-
-### Step 4: Choose Platform First
-
-**Before scanning or detecting frameworks, ask the user what they're testing:**
+**Ask for platform:**
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -355,7 +155,7 @@ Choose source (1, 2, or 3):
 
 What platform are you testing?
 
-1. 🌐 Web (Browser-based applications)
+1. 🌐 Web (Browser-based applications) ⭐ Recommended
    Frameworks: Playwright, Cypress, Jest, Vitest
    
 2. 📱 Mobile (React Native)
@@ -366,9 +166,168 @@ Choose platform (1 or 2):
 
 **Store platform choice:** `PLATFORM = "web" or "mobile"`
 
-This determines which frameworks to show in the next step.
+### Step 4: Choose E2E Technology/Framework
+
+**Based on platform selected in Step 3, show framework options:**
+
+**If Web (Platform 1):**
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌐 Select Web E2E Framework
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Which technology do you want to use for E2E test generation?
+
+Detected in your project:
+  1. ✅ Playwright (installed)     - Recommended for E2E ⭐
+  2. ✅ Jest (installed)           - For unit tests
+  3. ✅ Supertest (installed)      - For API tests
+
+Not installed (available):
+  4. Cypress - Alternative E2E framework
+  5. Vitest - Modern unit testing
+  6. React Testing Library - Component tests
+
+Choose framework (comma separated for multiple):
+Example: 1,2 for Playwright + Jest
+```
+
+**If Mobile (Platform 2):**
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📱 Select Mobile E2E Framework
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Which technology do you want to use for E2E test generation?
+
+Recommended for React Native:
+  1. 🎯 Maestro (recommended)      - Simple YAML-based E2E tests ⭐
+  2. Detox                        - Built for React Native
+  3. Appium                       - Cross-platform standard
+  4. Jest                         - For unit tests
+  5. React Native Testing Library - Component tests
+
+Detected in your project:
+  ✅ Jest (installed)
+
+Choose framework (comma separated for multiple):
+Example: 1,5 for Maestro + React Native Testing Library
+```
+
+**Confirm selection:**
+```
+You selected: Playwright + Jest
+
+Will generate:
+  ✅ E2E tests (Playwright) - tests/e2e/PremiumMealsActiveRewardCard.spec.ts
+  ✅ Unit tests (Jest) - tests/unit/PremiumMealsActiveRewardCard.test.ts
+
+Continue? (Y/n)
+```
 
 ### Step 5: Smart Selector Scan (Automatic)
+
+**Automatically scans YOUR IMPLEMENTED CODE for selectors:**
+
+Display:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 Scanning Your Code for Selectors...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Execute smart selector scan on your implementation:
+
+**For Web (Platform 1):**
+```bash
+# Scans your actual code
+→ Scans src/ for data-testid, data-cy, aria-label
+→ Finds selectors YOU added to your components
+→ Builds selector map from YOUR code
+→ Detects patterns and naming conventions
+→ Identifies components you implemented
+```
+
+**For Mobile React Native (Platform 2):**
+```bash
+# Scans your React Native code
+→ Scans src/ for testID props
+→ Finds testID YOU added to your RN components
+→ Builds selector map from YOUR code
+→ Detects React Native component patterns
+→ Identifies screens and navigators
+```
+
+Show results:
+
+**For Web:**
+```
+✅ Selector Scan Complete
+
+Found: 342 selectors in your code
+  • Buttons: 45
+  • Inputs: 78
+  • Forms: 23
+  • Pages: 12
+
+Quality: 87% coverage
+Missing: 52 elements need selectors in your implementation
+
+Selector map saved: .ac-verification/selectors.json
+```
+
+**For Mobile React Native:**
+```
+✅ Selector Scan Complete
+
+Found: 156 testIDs in your React Native code
+  • Buttons: 28
+  • TextInputs: 34
+  • Touchables: 42
+  • Screens: 8
+
+Quality: 78% coverage
+Missing: 38 elements need testID props
+
+Selector map saved: .ac-verification/selectors.json
+```
+
+If quality is low (<70%), warn:
+
+**For Web:**
+```
+⚠️ Selector coverage is low (52%)
+Your implementation is missing test selectors.
+Consider adding data-testid attributes to key elements.
+```
+
+**For Mobile React Native:**
+```
+⚠️ testID coverage is low (52%)
+Your React Native components are missing testID props.
+Consider adding testID to key components:
+<Button testID="submit-button" />
+```
+
+### Step 6: Generate Tests
+
+Based on what was entered in Step 2:
+
+**If Component (e.g., "PremiumMealsActiveRewardCard.tsx"):**
+- Use component analysis + test description (if provided)
+- Use selectors found in Step 5
+- Generate tests for identified interactions
+
+**If JIRA Ticket (e.g., "EPS-1234"):**
+- Use ACs or X-Ray test cases
+- Use selectors found in Step 5
+- Generate tests covering all acceptance criteria
+
+**Generate test files with selected frameworks from Step 4:**
+
+Continue with test generation using the selector map and chosen frameworks...
 
 **Automatically scans YOUR IMPLEMENTED CODE for selectors:**
 
