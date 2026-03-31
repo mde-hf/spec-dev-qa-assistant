@@ -62,7 +62,6 @@ That's it! 🎉
 | `/verify-ac` | Interactively verify each acceptance criterion |
 | `/post-to-jira` | Post verification results to JIRA ticket (auto-prompted after verify) |
 | `/figma-ac-extractor` | Extract user flow ACs from Figma designs |
-| `/smart-selector-scan` | Scan codebase for test selectors (auto-runs with generate-e2e-tests) |
 | `/ac-quality-trends` | Track quality metrics across sprints |
 
 ### **Integrates with spec-machine:**
@@ -74,6 +73,8 @@ That's it! 🎉
 | `/jira-gather-requirements` | Before `/collect-ac`: Fetch ticket requirements |
 | `/create-pr` | After `/verify-ac`: Create PR with JIRA link & labels |
 | `/a11y-check` | Optional: Check Figma design accessibility |
+
+**Note:** For test ID conventions and patterns, spec-machine's `testing/test-ids-web` and `testing/test-patterns-web` skills provide coding standards that work alongside these commands.
 
 ---
 
@@ -118,10 +119,11 @@ git checkout -b feature/EPS-1234-description
 
 # 6️⃣ Generate tests for your implementation
 /generate-e2e-tests EPS-1234
+→ Choose: Auto (use detected settings) or Manual (choose yourself)
 → Select platform: Web or Mobile React Native
-→ Auto scans for selectors in your code
 → Choose framework (Playwright/Maestro/etc.)
 → Generates tests based on your implementation + ACs
+→ Follows spec-machine test patterns automatically
 
 # 7️⃣ Run tests
 npx playwright test                     # Web
