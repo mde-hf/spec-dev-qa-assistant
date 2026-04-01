@@ -184,6 +184,11 @@ AskQuestion({
 
 **⚠️ IMPORTANT:** Use the AI to analyze files grouped by team.
 
+**⚠️ CRITICAL OUTPUT:** All team data MUST be saved to a SINGLE file: `.test-docs/data/all-teams.json`
+- Do NOT create separate files like `rew-squad.json` or `lcore-teams.json`
+- Merge ALL teams into one JSON structure
+- The dashboard only loads `all-teams.json`
+
 For each team, analyze their owned files:
 
 1. **Find corresponding test files** for each source file:
@@ -276,6 +281,13 @@ For each team, analyze their owned files:
 ```
 
 Save to `.test-docs/data/all-teams.json`
+
+**⚠️ CRITICAL:** Always save ALL analyzed teams to a single `all-teams.json` file:
+- If analyzing multiple teams (e.g., from CODEOWNERS or JIRA project), merge all team data into one JSON
+- Include all teams in the `teams` object
+- Update the `summary` section with aggregate stats
+- **Do NOT create separate JSON files per team** (e.g., no `rew-squad.json`, `lcore-teams.json`)
+- The dashboard loads only `all-teams.json` - this is the single source of truth
 
 ### Step 5: Generate Interactive Multi-Team Dashboard
 
