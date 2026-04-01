@@ -129,6 +129,57 @@ echo ""
 
 Save to `.test-docs/team-ownership.json`
 
+### Step 3.5: Confirm Team Scope (USER APPROVAL REQUIRED)
+
+**⚠️ CRITICAL:** Before proceeding with the full analysis, **ALWAYS** ask the user to confirm the team scope.
+
+Display the discovered team mapping in a clear format:
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📊 Discovered Team Scope"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "For input: [USER_INPUT]"
+echo ""
+echo "I found the following team(s) and their ownership:"
+echo ""
+echo "Team: squad-missions-web"
+echo "  Owns: app/features/missions/**"
+echo "  Files: 234 source files"
+echo ""
+echo "Team: squad-loyalty-missions-web"
+echo "  Owns: app/features/loyalty-missions/**"
+echo "  Files: 187 source files"
+echo ""
+echo "Total: 2 teams, 421 files to analyze"
+echo ""
+```
+
+**Then use the `AskQuestion` tool:**
+
+```typescript
+AskQuestion({
+  title: "Confirm Team Scope",
+  questions: [{
+    id: "scope_confirmation",
+    prompt: "Is this the correct team scope you want to analyze?",
+    options: [
+      { id: "yes", label: "✅ Yes, proceed with this scope" },
+      { id: "no", label: "❌ No, let me specify the correct teams" }
+    ]
+  }]
+})
+```
+
+**If user selects "no":**
+- Ask them to specify the correct team name(s)
+- Re-run the team mapping with their input
+- Show the new scope and ask for confirmation again
+
+**If user selects "yes":**
+- Proceed to Step 4
+
 ### Step 4: Analyze Test Coverage Per Team
 
 **⚠️ IMPORTANT:** Use the AI to analyze files grouped by team.
