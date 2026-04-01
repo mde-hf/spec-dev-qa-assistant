@@ -14,12 +14,13 @@ This command creates an interactive HTML dashboard showing:
 ## Usage
 
 ```bash
-/document-tests [JIRA-TICKET | FEATURE-NAME | COMPONENT-NAME | DIRECTORY]
+/document-tests [JIRA-PROJECT | JIRA-TICKET | FEATURE-NAME | COMPONENT-NAME | DIRECTORY]
 ```
 
 ## Examples
 
 ```bash
+/document-tests REW               # Analyze entire team/squad (all REW tickets)
 /document-tests EPS-1234          # Analyze ticket-related code
 /document-tests shopping-cart     # Analyze feature
 /document-tests CartItem.tsx      # Analyze component
@@ -67,7 +68,8 @@ Use the `AskQuestion` tool to ask the user:
 - id: `input_type`
 - prompt: "What would you like to document?"
 - options:
-  - `jira` - "JIRA Ticket (analyzes PR/linked files)"
+  - `jira_project` - "JIRA Project (Team/Squad coverage - all tickets)"
+  - `jira_ticket` - "JIRA Ticket (analyzes PR/linked files)"
   - `feature` - "Feature Name (searches feature folders)"
   - `component` - "Component Name (specific file)"
   - `directory` - "Directory Path (analyzes folder)"
@@ -90,7 +92,110 @@ SCOPE_TESTS=()
 SCOPE_NAME=""
 
 case "$INPUT_TYPE" in
-  "jira")
+  "jira_project")
+    echo "🏢 Analyzing JIRA Project/Squad: $INPUT_VALUE"
+    echo ""
+    
+    # Check if JIRA CLI is authenticated
+    if ! jira version &> /dev/null; then
+      echo "❌ JIRA CLI not authenticated"
+      echo "Run: jira init"
+      exit 1
+    fi
+    
+    echo "📊 Fetching all tickets in project: $INPUT_VALUE..."
+    echo "⏳ This may take a while for large projects..."
+    echo ""
+    
+    # Get all tickets from the project (Done, In Progress, etc.)
+    # Exclude: Cancelled, Rejected
+    JIRA_TICKETS=$(jira issue list --project "$INPUT_VALUE" --status "!Cancelled,!Rejected" --plain --columns KEY --no-headers 2>/dev/null | awk '{print $1}')
+    
+    if [ -z "$JIRA_TICKETS" ]; then
+      echo "❌ No tickets found in project: $INPUT_VALUE"
+      echo "   Make sure the project key is correct (e.g., REW, EPS, CONV)"
+      exit 1
+    fi
+    
+    TICKET_COUNT=$(echo "$JIRA_TICKETS" | wc -l | tr -d ' ')
+    echo "✅ Found $TICKET_COUNT tickets in $INPUT_VALUE"
+    echo ""
+    
+    # Collect all unique files from all tickets
+    ALL_FILES=()
+    TICKETS_WITH_FILES=0
+    
+    echo "🔍 Analyzing tickets and finding related code..."
+    
+    # Process tickets in batches to show progress
+    COUNTER=0
+    while IFS= read -r TICKET; do
+      COUNTER=$((COUNTER + 1))
+      
+      # Show progress every 10 tickets
+      if [ $((COUNTER % 10)) -eq 0 ]; then
+        echo "   Processed $COUNTER/$TICKET_COUNT tickets..."
+      fi
+      
+      # Try to get PR from ticket
+      PR_URL=$(jira issue view "$TICKET" --plain 2>/dev/null | grep -oE 'https://github.com/[^/]+/[^/]+/pull/[0-9]+' | head -1)
+      
+      if [ -n "$PR_URL" ]; then
+        PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+        
+        # Get changed files from PR
+        PR_FILES=$(gh pr view "$PR_NUMBER" --json files --jq '.files[].path' 2>/dev/null | grep -E '\.(ts|tsx|js|jsx)$' | grep -v -E '\.(spec|test)\.')
+        
+        if [ -n "$PR_FILES" ]; then
+          TICKETS_WITH_FILES=$((TICKETS_WITH_FILES + 1))
+          while IFS= read -r file; do
+            if [ -f "$file" ]; then
+              ALL_FILES+=("$file")
+            fi
+          done <<< "$PR_FILES"
+        fi
+      else
+        # Fallback: search git history for ticket mentions
+        COMMIT_FILES=$(git log --all --grep="$TICKET" --name-only --pretty=format: 2>/dev/null | sort -u | grep -E '\.(ts|tsx|js|jsx)$' | grep -v -E '\.(spec|test)\.')
+        
+        if [ -n "$COMMIT_FILES" ]; then
+          TICKETS_WITH_FILES=$((TICKETS_WITH_FILES + 1))
+          while IFS= read -r file; do
+            if [ -f "$file" ]; then
+              ALL_FILES+=("$file")
+            fi
+          done <<< "$COMMIT_FILES"
+        fi
+      fi
+    done <<< "$JIRA_TICKETS"
+    
+    # Remove duplicates
+    SCOPE_FILES=($(printf '%s\n' "${ALL_FILES[@]}" | sort -u))
+    
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📊 Project Analysis Summary"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Project:           $INPUT_VALUE"
+    echo "Total Tickets:     $TICKET_COUNT"
+    echo "Tickets with PRs:  $TICKETS_WITH_FILES"
+    echo "Unique Files:      ${#SCOPE_FILES[@]}"
+    echo ""
+    
+    if [ ${#SCOPE_FILES[@]} -eq 0 ]; then
+      echo "❌ No source files found for project $INPUT_VALUE"
+      echo "   This could mean:"
+      echo "   - Tickets don't have PRs linked"
+      echo "   - PRs are in a different repo"
+      echo "   - No commits mention the ticket IDs"
+      exit 1
+    fi
+    
+    SCOPE_NAME="$INPUT_VALUE-Team"
+    ;;
+    
+  "jira_ticket")
     echo "📋 Analyzing JIRA ticket: $INPUT_VALUE"
     
     # Check if JIRA CLI is authenticated
@@ -277,7 +382,15 @@ Generate a JSON structure:
 ```json
 {
   "scope_name": "shopping-cart",
+  "scope_type": "jira_project|jira_ticket|feature|component|directory",
   "generated_at": "2026-03-24T10:30:00Z",
+  "jira_metadata": {
+    "project_key": "REW",
+    "total_tickets": 145,
+    "tickets_analyzed": 98,
+    "tickets_with_prs": 87,
+    "sprint": "Sprint 24"
+  },
   "summary": {
     "total_files": 15,
     "files_with_tests": 12,
@@ -287,6 +400,11 @@ Generate a JSON structure:
       "e2e": { "count": 2, "coverage": 100 },
       "integration": { "count": 5, "coverage": 80 },
       "unit": { "count": 25, "coverage": 90 }
+    },
+    "team_metrics": {
+      "critical_gaps": 3,
+      "high_risk_untested": 8,
+      "quality_score": 78.5
     }
   },
   "components": [
@@ -335,12 +453,18 @@ Create `.test-docs/index.html` (central hub) and `.test-docs/${SCOPE_NAME}.html`
 Use the AI to generate:
 
 1. **Interactive HTML with:**
+   - **Team Overview Section** (for jira_project type):
+     - Squad/team name and logo
+     - Total tickets analyzed
+     - Team quality score
+     - Coverage trend chart
    - Coverage heatmap (colored blocks)
    - Filterable component list
    - Gap priority matrix
    - Test pyramid visualization
    - Component detail cards
    - Search functionality
+   - **Feature breakdown** by module/area
 
 2. **Embedded visualizations:**
    - Chart.js or D3.js for graphs
@@ -372,12 +496,33 @@ Template structure:
 <body>
   <header>
     <h1>🧪 Test Coverage: ${SCOPE_NAME}</h1>
+    
+    <!-- For JIRA Project: Show team metadata -->
+    {{#if jira_metadata}}
+    <div class="team-info">
+      <span class="badge">Squad: ${jira_metadata.project_key}</span>
+      <span class="badge">Tickets: ${jira_metadata.total_tickets}</span>
+      <span class="badge">PRs Analyzed: ${jira_metadata.tickets_with_prs}</span>
+    </div>
+    {{/if}}
+    
     <div class="summary-cards">
       <div class="card">
         <div class="value">${overall_coverage}%</div>
         <div class="label">Overall Coverage</div>
       </div>
-      <!-- More cards -->
+      <div class="card">
+        <div class="value">${files_with_tests}/${total_files}</div>
+        <div class="label">Files with Tests</div>
+      </div>
+      <div class="card">
+        <div class="value">${critical_gaps}</div>
+        <div class="label">Critical Gaps</div>
+      </div>
+      <div class="card">
+        <div class="value">${quality_score}%</div>
+        <div class="label">Quality Score</div>
+      </div>
     </div>
   </header>
   
@@ -535,20 +680,40 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "✅ Test Documentation Generated!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "📊 Coverage Summary:"
-echo "   Overall: ${overall_coverage}%"
-echo "   Files with tests: ${files_with_tests}/${total_files}"
-echo "   Critical gaps: ${critical_gaps_count}"
+
+# Show different metrics for team/project vs single feature
+if [ "$INPUT_TYPE" = "jira_project" ]; then
+  echo "🏢 Squad Coverage Summary: $INPUT_VALUE"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "   Total Tickets:      $TICKET_COUNT"
+  echo "   Tickets Analyzed:   $TICKETS_WITH_FILES"
+  echo "   Unique Files:       ${#SCOPE_FILES[@]}"
+  echo "   Files with Tests:   ${files_with_tests}"
+  echo "   Overall Coverage:   ${overall_coverage}%"
+  echo "   Quality Score:      ${quality_score}%"
+  echo "   Critical Gaps:      ${critical_gaps_count}"
+  echo ""
+  echo "📊 Test Pyramid:"
+  echo "   E2E Tests:          ${e2e_count} (${e2e_coverage}%)"
+  echo "   Integration Tests:  ${integration_count} (${integration_coverage}%)"
+  echo "   Unit Tests:         ${unit_count} (${unit_coverage}%)"
+else
+  echo "📊 Coverage Summary:"
+  echo "   Overall: ${overall_coverage}%"
+  echo "   Files with tests: ${files_with_tests}/${total_files}"
+  echo "   Critical gaps: ${critical_gaps_count}"
+fi
+
 echo ""
 echo "📂 Generated Files:"
 echo "   Dashboard:  .test-docs/index.html"
-echo "   Feature:    .test-docs/${SCOPE_NAME}.html"
+echo "   Report:     .test-docs/${SCOPE_NAME}.html"
 echo "   Data:       .test-docs/data/${SCOPE_NAME}.json"
 echo ""
 echo "🌐 Open in browser:"
-echo "   open .test-docs/index.html"
+echo "   open .test-docs/${SCOPE_NAME}.html"
 echo ""
-echo "🔄 Auto-update enabled via git hook"
+echo "🔄 Auto-update: Run this command again to refresh"
 echo ""
 
 # Open in browser
@@ -565,11 +730,13 @@ fi
 
 ```
 .test-docs/
-├── index.html                    # Central dashboard
+├── index.html                    # Central dashboard (all teams/features)
+├── REW-Team.html                 # Team dashboard (JIRA project)
 ├── shopping-cart.html            # Feature page
-├── checkout.html
+├── checkout.html                 # Another feature
 ├── data/
-│   ├── shopping-cart.json        # Coverage data
+│   ├── REW-Team.json             # Team coverage data
+│   ├── shopping-cart.json        # Feature coverage data
 │   └── checkout.json
 ├── assets/
 │   ├── screenshots/
@@ -588,9 +755,11 @@ fi
 
 ## Notes
 
+- **JIRA Project Support**: Analyzes entire squad/team by fetching all tickets, PRs, and related code
 - **Smart Discovery**: Automatically finds related files and tests
 - **Test Pyramid Analysis**: Classifies tests by layer (E2E, Integration, Unit)
 - **Visual Gap Analysis**: Color-coded priority matrix
-- **Auto-Update**: Git hook runs after test changes
+- **Team Metrics**: Quality scores, coverage trends, critical gaps
+- **Auto-Update**: Run the same command to refresh the dashboard
 - **Standalone**: No dependency on other commands
 - **Extensible**: Easy to add more visualizations later
