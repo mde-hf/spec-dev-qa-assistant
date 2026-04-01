@@ -29,6 +29,13 @@
   - Recommendations for correctness
   - Project pattern detection
 
+- **[DOCUMENT-TESTS-GUIDE.md](./DOCUMENT-TESTS-GUIDE.md)** - Test documentation generator guide (22KB)
+  - Interactive HTML dashboard generation
+  - Test coverage visualization
+  - Gap analysis and risk assessment
+  - Auto-update system
+  - Integration with other commands
+
 ### Feature Documentation
 - **[IMPROVEMENTS-V2.md](./IMPROVEMENTS-V2.md)** - Feature descriptions (17KB)
   - Detailed feature descriptions
