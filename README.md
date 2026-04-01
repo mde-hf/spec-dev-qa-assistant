@@ -59,6 +59,7 @@ That's it! 🎉
 | `/collect-ac` | Collect acceptance criteria from JIRA, Confluence, and Figma |
 | `/create-xray-tests` | Generate test cases in X-Ray from ACs (BDD or Manual format) |
 | `/generate-e2e-tests` | Generate automated tests (Web: Playwright/Cypress, Mobile: Maestro/Detox) |
+| `/document-tests` | Generate interactive HTML test coverage dashboard with visual gap analysis |
 | `/verify-ac` | Interactively verify each acceptance criterion |
 | `/post-to-jira` | Post verification results to JIRA ticket (auto-prompted after verify) |
 | `/figma-ac-extractor` | Extract user flow ACs from Figma designs |
@@ -130,7 +131,14 @@ npx playwright test                     # Web
 # or
 maestro test .maestro/EPS-1234.yaml     # React Native
 
-# 8️⃣ Verify ACs
+# 8️⃣ Generate test documentation (optional)
+/document-tests EPS-1234
+→ Analyzes test coverage across all layers
+→ Generates interactive HTML dashboard
+→ Shows gaps with priority matrix
+→ Updates automatically on future test changes
+
+# 9️⃣ Verify ACs
 /verify-ac EPS-1234
 → Interactive verification
 → Test status tracking
@@ -218,6 +226,7 @@ Tracks across sprints:
 - `collect-ac/` - Multi-source AC fetching
 - `verify-ac/` - Interactive verification
 - `generate-e2e-tests/` - Test generation
+- `document-tests/` - Interactive test coverage dashboard
 - `post-to-jira/` - JIRA integration
 - `figma-ac-extractor/` - Figma integration
 - `create-xray-tests/` - X-Ray test case generation
