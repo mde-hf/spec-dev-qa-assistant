@@ -9,7 +9,8 @@ The `/document-tests` command generates an **interactive HTML dashboard** that v
 ## Quick Start
 
 ```bash
-/document-tests EPS-1234          # Analyze JIRA ticket
+/document-tests REW               # Analyze entire team/squad (all REW tickets)
+/document-tests EPS-1234          # Analyze ticket-related code
 /document-tests shopping-cart     # Analyze feature
 /document-tests CartItem.tsx      # Analyze component
 /document-tests src/features/checkout  # Analyze directory
@@ -91,7 +92,42 @@ Visual mapping of tested UI elements (optional, requires Playwright)
 
 ## Input Modes
 
-### 1. JIRA Ticket
+### 1. JIRA Project (Team/Squad Coverage) ⭐ NEW
+
+```bash
+/document-tests REW
+```
+
+**What it does:**
+1. Fetches **all tickets** in the REW project (excludes Cancelled/Rejected)
+2. Finds PRs linked to each ticket
+3. For tickets without PRs: searches git history for mentions
+4. Aggregates all unique source files across the squad
+5. Analyzes test coverage for the entire team's codebase
+6. Generates a squad-level dashboard
+
+**Output includes:**
+- Total tickets in project
+- Number of tickets with PRs
+- Unique files analyzed
+- Team quality score
+- Coverage breakdown by test layer
+- Critical gaps specific to your squad
+- Feature/module breakdown
+
+**Best for:** 
+- Sprint retrospectives
+- Team health checks
+- Leadership reporting
+- Identifying squad-wide testing gaps
+
+**Performance:** 
+- Can take 1-5 minutes for projects with 100+ tickets
+- Shows progress indicators
+
+---
+
+### 2. JIRA Ticket
 ```bash
 /document-tests EPS-1234
 ```
@@ -104,7 +140,9 @@ Visual mapping of tested UI elements (optional, requires Playwright)
 
 **Best for:** Post-PR documentation, feature verification
 
-### 2. Feature Name
+---
+
+### 3. Feature Name
 ```bash
 /document-tests shopping-cart
 ```
@@ -116,7 +154,21 @@ Visual mapping of tested UI elements (optional, requires Playwright)
 
 **Best for:** Feature-level documentation, architecture reviews
 
-### 3. Component Name
+### 3. Feature Name
+```bash
+/document-tests shopping-cart
+```
+
+**What it does:**
+1. Searches for folders matching "shopping-cart"
+2. Prioritizes folders in `features/` directories
+3. Analyzes all source files in matching folders
+
+**Best for:** Feature-level documentation, architecture reviews
+
+---
+
+### 4. Component Name
 ```bash
 /document-tests CartItem.tsx
 ```
@@ -128,7 +180,9 @@ Visual mapping of tested UI elements (optional, requires Playwright)
 
 **Best for:** Component-level reviews, refactoring
 
-### 4. Directory Path
+---
+
+### 5. Directory Path
 ```bash
 /document-tests src/features/checkout
 ```
@@ -139,6 +193,167 @@ Visual mapping of tested UI elements (optional, requires Playwright)
 3. Generates directory-level documentation
 
 **Best for:** Module documentation, team handoffs
+
+---
+
+## Team/Squad Coverage Analysis (JIRA Projects)
+
+### Overview
+
+When you run `/document-tests REW`, it analyzes your **entire squad's codebase** by:
+1. Fetching all valid tickets in the project
+2. Finding related PRs and code
+3. Aggregating coverage across all features
+4. Identifying squad-level patterns and gaps
+
+### What Gets Analyzed
+
+#### Included Tickets:
+- ✅ Done
+- ✅ In Progress
+- ✅ In Review
+- ✅ Ready for QA
+- ✅ Resolved
+- ✅ Closed
+
+#### Excluded Tickets:
+- ❌ Cancelled
+- ❌ Rejected
+
+### Dashboard Metrics for Teams
+
+#### Overview Cards:
+```
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│ Total Tickets   │  │ PRs Analyzed    │  │ Quality Score   │
+│      145        │  │      128        │  │      78.5%      │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│ Unique Files    │  │ Files w/ Tests  │  │ Critical Gaps   │
+│      287        │  │      234        │  │        8        │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+```
+
+#### Team Test Pyramid:
+Shows distribution of tests across layers for the entire squad
+
+#### Module Breakdown:
+Groups coverage by feature/module (e.g., `features/rewards/`, `features/checkout/`)
+
+#### Top Gaps:
+Prioritized list of critical untested components specific to your team
+
+### Example Output
+
+```bash
+/document-tests REW
+
+🏢 Analyzing JIRA Project/Squad: REW
+📊 Fetching all tickets in project: REW...
+⏳ This may take a while for large projects...
+
+✅ Found 145 tickets in REW
+
+🔍 Analyzing tickets and finding related code...
+   Processed 10/145 tickets...
+   Processed 20/145 tickets...
+   ...
+   Processed 140/145 tickets...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 Project Analysis Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Project:           REW
+Total Tickets:     145
+Tickets with PRs:  128
+Unique Files:      287
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Test Documentation Generated!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🏢 Squad Coverage Summary: REW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Total Tickets:      145
+   Tickets Analyzed:   128
+   Unique Files:       287
+   Files with Tests:   234
+   Overall Coverage:   81.5%
+   Quality Score:      78.5%
+   Critical Gaps:      8
+
+📊 Test Pyramid:
+   E2E Tests:          12 (75%)
+   Integration Tests:  48 (85%)
+   Unit Tests:         187 (82%)
+
+📂 Generated Files:
+   Dashboard:  .test-docs/index.html
+   Report:     .test-docs/REW-Team.html
+   Data:       .test-docs/data/REW-Team.json
+
+🌐 Opening in browser...
+```
+
+### Use Cases for Team Coverage
+
+#### 1. Sprint Retrospectives
+```bash
+# Generate team coverage
+/document-tests REW
+
+# Review in retro:
+- What improved since last sprint?
+- Where are our biggest gaps?
+- Which modules need attention?
+```
+
+#### 2. Quarterly Reviews
+```bash
+# Track progress over time
+/document-tests REW  # Run monthly
+# Compare .test-docs/data/REW-Team.json over quarters
+```
+
+#### 3. Onboarding New Team Members
+```bash
+# Show new devs the squad's code health
+/document-tests REW
+# Share: "Here's what we own and our testing status"
+```
+
+#### 4. Leadership Reporting
+```bash
+# Generate dashboard for stakeholders
+/document-tests REW
+# Export PDF from browser → Share in presentations
+```
+
+#### 5. Comparing Squads
+```bash
+/document-tests REW   # Rewards squad
+/document-tests CONV  # Conversion squad
+/document-tests EPS   # Engagement squad
+# Compare quality scores and coverage %
+```
+
+### Updating Team Coverage
+
+**Simple:** Just run the same command again
+
+```bash
+# Initial run
+/document-tests REW
+
+# ...team writes more tests...
+
+# Update dashboard (overwrites previous)
+/document-tests REW
+```
+
+The dashboard file (`.test-docs/REW-Team.html`) gets updated with latest data.
 
 ---
 
