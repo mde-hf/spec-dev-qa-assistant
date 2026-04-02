@@ -57,7 +57,6 @@ That's it! 🎉
 | Command | Description |
 |---------|-------------|
 | `/collect-ac` | Collect acceptance criteria from JIRA, Confluence, and Figma |
-| `/create-xray-tests` | Generate test cases in X-Ray from ACs (BDD or Manual format) |
 | `/generate-e2e-tests` | Generate automated tests (Web: Playwright/Cypress, Mobile: Maestro/Detox) |
 | `/document-tests` | Generate interactive HTML test coverage dashboard with visual gap analysis |
 | `/verify-ac` | Interactively verify each acceptance criterion |
@@ -104,21 +103,14 @@ That's it! 🎉
 → Extracts user flows and interactions
 → Merges with existing ACs
 
-# 3️⃣ (Optional) Create X-Ray test cases
-/create-xray-tests EPS-1234
-→ Choose format: BDD or Manual Test Steps
-→ Generate test cases from ACs
-→ Create X-Ray Test issues in JIRA
-→ Link tests to story
-
-# 4️⃣ Create branch (if not already)
+# 3️⃣ Create branch (if not already)
 git checkout -b feature/EPS-1234-description
 
-# 5️⃣ Implement your feature
+# 4️⃣ Implement your feature
 # ... write your code ...
 # Build the feature according to ACs
 
-# 6️⃣ Generate tests for your implementation
+# 5️⃣ Generate tests for your implementation
 /generate-e2e-tests EPS-1234
 → Choose: Auto (use detected settings) or Manual (choose yourself)
 → Select platform: Web or Mobile React Native
@@ -126,19 +118,19 @@ git checkout -b feature/EPS-1234-description
 → Generates tests based on your implementation + ACs
 → Follows spec-machine test patterns automatically
 
-# 7️⃣ Run tests
+# 6️⃣ Run tests
 npx playwright test                     # Web
 # or
 maestro test .maestro/EPS-1234.yaml     # React Native
 
-# 8️⃣ Generate test documentation (optional)
+# 7️⃣ Generate test documentation (optional)
 /document-tests EPS-1234
 → Analyzes test coverage across all layers
 → Generates interactive HTML dashboard
 → Shows gaps with priority matrix
 → Updates automatically on future test changes
 
-# 9️⃣ Verify ACs
+# 8️⃣ Verify ACs
 /verify-ac EPS-1234
 → Interactive verification
 → Test status tracking
@@ -229,7 +221,6 @@ Tracks across sprints:
 - `document-tests/` - Interactive test coverage dashboard
 - `post-to-jira/` - JIRA integration
 - `figma-ac-extractor/` - Figma integration
-- `create-xray-tests/` - X-Ray test case generation
 - `ac-quality-trends/` - Quality metrics
 - `setup-qa-assistant/` - Dependency setup and configuration
 
