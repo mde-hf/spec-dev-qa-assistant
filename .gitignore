@@ -26,6 +26,8 @@ config.local.yml
 # Testing artifacts
 .ac-verification/*/
 !.ac-verification/.gitkeep
+.xray-tests/*/
+!.xray-tests/.gitkeep
 test-results/
 playwright-report/
 coverage/
