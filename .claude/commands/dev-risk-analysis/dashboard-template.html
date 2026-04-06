@@ -711,17 +711,23 @@ async function init() {
     const fileList = await fetch('data/all-analyses.json').then(r => r.json()).catch(() => null);
     
     if (fileList && fileList.analyses) {
+      console.log('Loading analyses:', fileList.analyses.map(a => a.key));
       // Load all available analyses
       for (const analysis of fileList.analyses) {
         const key = analysis.key;
+        console.log(`Loading ${key}...`);
         const [scores, prs] = await Promise.all([
-          fetch(`data/${key}-scores.json`).then(r => r.json()).catch(() => null),
-          fetch(`data/${key}-analyzed-prs.json`).then(r => r.json()).catch(() => null)
+          fetch(`data/${key}-scores.json`).then(r => r.json()).catch(e => { console.error(`Failed to load ${key}-scores.json:`, e); return null; }),
+          fetch(`data/${key}-analyzed-prs.json`).then(r => r.json()).catch(e => { console.error(`Failed to load ${key}-analyzed-prs.json:`, e); return null; })
         ]);
         if (scores) {
+          console.log(`✓ Loaded ${key}`, { input_type: scores.input_type, developers: scores.developers?.length });
           allAnalysisData[key] = { scores, prs, label: analysis.label };
+        } else {
+          console.warn(`✗ Failed to load scores for ${key}`);
         }
       }
+      console.log('All loaded analyses:', Object.keys(allAnalysisData));
     } else {
       // Fallback: load single analysis (current approach)
       const [scores, prs] = await Promise.all([
@@ -739,7 +745,10 @@ async function init() {
   const selector = document.getElementById('squadSelector');
   const keys = Object.keys(allAnalysisData).sort();
   
+  console.log('Populating dropdown with keys:', keys);
+  
   if (keys.length === 0) {
+    console.warn('No analyses loaded!');
     selector.innerHTML = '<option value="">No data available</option>';
     return;
   }
@@ -748,6 +757,7 @@ async function init() {
     const data = allAnalysisData[key];
     const label = data.label || key;
     const type = data.scores.input_type === 'jira' ? 'JIRA' : 'Squad';
+    console.log(`Adding to dropdown: ${type}: ${label} (key: ${key})`);
     return `<option value="${key}">${type}: ${label}</option>`;
   }).join('');
 
