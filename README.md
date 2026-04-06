@@ -12,6 +12,8 @@ Automate your entire QA workflow from acceptance criteria to verified tests with
 
 - ✅ **Multi-source AC Detection** - Automatically fetch ACs from JIRA, Confluence, and Figma
 - ✅ **Automated Test Generation** - Generate E2E, API, and unit tests from acceptance criteria
+- ✅ **X-Ray Test Case Generation** - Create X-Ray test cases directly from JIRA ticket ACs
+- ✅ **Developer Risk Analysis** - Calculate quality scores and identify risk areas by squad
 - ✅ **Platform Support** - Works with Web (Playwright, Cypress) and Mobile React Native (Maestro, Detox)
 - ✅ **Smart Selector Scanning** - Map test selectors across your codebase
 - ✅ **Interactive Verification** - Step-by-step AC verification with test execution
@@ -58,11 +60,14 @@ That's it! 🎉
 |---------|-------------|
 | `/collect-ac` | Collect acceptance criteria from JIRA, Confluence, and Figma |
 | `/generate-e2e-tests` | Generate automated tests (Web: Playwright/Cypress, Mobile: Maestro/Detox) |
+| `/generate-xray-tests` | Generate X-Ray test cases directly from JIRA ticket acceptance criteria |
 | `/document-tests` | Generate interactive HTML test coverage dashboard with visual gap analysis |
+| `/dev-risk-analysis` | Analyze developer quality metrics and risk scores by squad or JIRA project |
 | `/verify-ac` | Interactively verify each acceptance criterion |
 | `/post-to-jira` | Post verification results to JIRA ticket (auto-prompted after verify) |
 | `/figma-ac-extractor` | Extract user flow ACs from Figma designs |
 | `/ac-quality-trends` | Track quality metrics across sprints |
+| `/setup-qa-assistant` | Setup and validate dependencies (JIRA CLI, Figma MCP, etc.) |
 
 ### **Integrates with spec-machine:**
 
@@ -210,6 +215,28 @@ Tracks across sprints:
 - Source quality
 - Developer performance
 
+### **Developer Risk Analysis**
+
+Calculate quality metrics by squad or JIRA project:
+- Developer confidence scores (0-100)
+- Bug fix tracking (last 6 months)
+- Legacy code risk assessment
+- Critical bug detection
+- Interactive dashboard with drill-down
+- Squad/project comparisons
+- Real names + GitHub usernames
+- Tooltips explaining all metrics
+
+### **X-Ray Test Case Generation**
+
+Automate X-Ray test creation:
+- Extract ACs from JIRA tickets
+- Generate BDD or Manual format test cases
+- Automatic linking to source ticket
+- Dry-run mode for preview
+- Batch creation from multiple ACs
+- Follows JIRA CLI approach (spec-machine standard)
+
 ---
 
 ## 📦 What's Included
@@ -218,7 +245,9 @@ Tracks across sprints:
 - `collect-ac/` - Multi-source AC fetching
 - `verify-ac/` - Interactive verification
 - `generate-e2e-tests/` - Test generation
+- `generate-xray-tests/` - X-Ray test case generation from JIRA ACs
 - `document-tests/` - Interactive test coverage dashboard
+- `dev-risk-analysis/` - Developer risk analysis and quality metrics
 - `post-to-jira/` - JIRA integration
 - `figma-ac-extractor/` - Figma integration
 - `ac-quality-trends/` - Quality metrics
@@ -333,6 +362,31 @@ npx playwright test
 → Recommendations: Increase visual testing
 ```
 
+### Example 4: Generate X-Ray Test Cases
+
+```bash
+/generate-xray-tests LMISSIONS-1358 --dry-run
+
+→ Fetching ticket from JIRA...
+→ Extracted 4 acceptance criteria
+→ Generating X-Ray test cases (BDD format)
+→ Preview: Would create 4 Test issues linked to LMISSIONS-1358
+→ Run without --dry-run to create actual test cases
+```
+
+### Example 5: Developer Risk Analysis
+
+```bash
+/dev-risk-analysis
+
+→ Enter squad name or JIRA project key: SSX
+→ Analyzing last 6 months of PRs...
+→ Found 15 developers, 87 PRs, 12 bug fixes
+→ Generated dashboard: ~/hellofresh-web/.dev-risk-analysis/index.html
+→ Squad Average Score: 82/100
+→ Top Risk: Legacy code changes (3 critical areas)
+```
+
 ---
 
 ## 🎯 Benefits
@@ -359,13 +413,21 @@ npx playwright test
 
 ## 🔄 Updates
 
+### v2.2 (April 6, 2026)
+- ✨ **NEW:** `/generate-xray-tests` - Create X-Ray test cases from JIRA ACs
+- ✨ **NEW:** `/dev-risk-analysis` - Developer quality metrics and risk scores
+- ✅ Developer risk dashboard with tooltips and squad selector
+- ✅ Test coverage dashboard with comprehensive tooltips
+- ✅ JIRA CLI integration following spec-machine standards
+- ✅ Interactive dashboards with HelloFresh brand colors
+
 ### v2.1 (March 22, 2026)
 - ✅ JIRA post now auto-prompted after verify-ac
 - ✅ Framework selection simplified (shows detected only)
 - ✅ Smart selector scan integrated into generate-e2e-tests
 - ✅ Figma extractor focuses on user flows (not visual styling)
 
-See [WORKFLOW-UPDATES-V2.1.md](WORKFLOW-UPDATES-V2.1.md) for full details.
+See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ---
 
