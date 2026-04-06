@@ -26,7 +26,7 @@ Use the `CallMcpTool` to verify Atlassian MCP is available and authenticated:
 ```javascript
 // Get user info to verify authentication
 CallMcpTool({
-  server: "plugin-atlassian-atlassian",
+  server: "atlassian",
   toolName: "atlassianUserInfo",
   arguments: {}
 })
@@ -43,7 +43,7 @@ Fetch the list of accessible Atlassian sites:
 
 ```javascript
 CallMcpTool({
-  server: "plugin-atlassian-atlassian",
+  server: "atlassian",
   toolName: "getAccessibleAtlassianResources",
   arguments: {}
 })
@@ -66,7 +66,7 @@ Verify the ticket exists and is accessible:
 
 ```javascript
 CallMcpTool({
-  server: "plugin-atlassian-atlassian",
+  server: "atlassian",
   toolName: "getJiraIssue",
   arguments: {
     cloudId: CLOUD_ID,
@@ -87,7 +87,7 @@ Check if ticket has acceptance criteria in description or custom fields.
 
 ```javascript
 const ticketData = CallMcpTool({
-  server: "plugin-atlassian-atlassian",
+  server: "atlassian",
   toolName: "getJiraIssue",
   arguments: {
     cloudId: CLOUD_ID,
@@ -199,7 +199,7 @@ for (const [index, ac] of ACS_ARRAY.entries()) {
   
   // Get X-Ray test issue type ID
   const projectMetadata = CallMcpTool({
-    server: "plugin-atlassian-atlassian",
+    server: "atlassian",
     toolName: "getJiraProjectIssueTypesMetadata",
     arguments: {
       cloudId: CLOUD_ID,
@@ -255,7 +255,7 @@ Feature: ${testSummary}
   // Create X-Ray test case
   try {
     const createResult = CallMcpTool({
-      server: "plugin-atlassian-atlassian",
+      server: "atlassian",
       toolName: "createJiraIssue",
       arguments: {
         cloudId: CLOUD_ID,
@@ -275,7 +275,7 @@ Feature: ${testSummary}
     
     // Link test to original JIRA ticket
     CallMcpTool({
-      server: "plugin-atlassian-atlassian",
+      server: "atlassian",
       toolName: "createIssueLink",
       arguments: {
         cloudId: CLOUD_ID,
