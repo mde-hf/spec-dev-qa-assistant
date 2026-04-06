@@ -4,14 +4,14 @@ argument-hint: 'TICKET-123 [--format=bdd|manual] [--dry-run]'
 description: Generate X-Ray test cases from JIRA ticket acceptance criteria
 mode: single-agent
 dependencies:
-  - Atlassian MCP (required)
+  - jira CLI (required)
   - X-Ray for JIRA (required)
 ---
 
 # Generate X-Ray Test Cases from JIRA Tickets
 
 ## Purpose
-This command generates X-Ray test cases directly from a JIRA ticket's acceptance criteria using the Atlassian MCP. It extracts ACs from the ticket, converts them into test case format (BDD or Manual), and creates the test cases in X-Ray with proper linking back to the original ticket.
+This command generates X-Ray test cases directly from a JIRA ticket's acceptance criteria. It extracts ACs from the ticket, converts them into test case format (BDD or Manual), and creates the test cases in X-Ray with proper linking back to the original ticket.
 
 **Single Purpose:** Create X-Ray test cases only - no reports, no test executions, no test plans.
 
@@ -19,375 +19,349 @@ This command generates X-Ray test cases directly from a JIRA ticket's acceptance
 
 ### Phase 0: Environment and Setup Validation
 
-#### 1. Atlassian MCP Setup
+#### 1. JIRA CLI Setup
+```bash
+# Check if JIRA CLI is installed
+if ! command -v jira &> /dev/null; then
+    echo "❌ JIRA CLI not found. Install with:"
+    echo "   macOS: brew install ankitpokhrel/jira-cli/jira-cli"
+    echo "   Other: https://github.com/ankitpokhrel/jira-cli"
+    exit 1
+fi
 
-Use the `CallMcpTool` to verify Atlassian MCP is available and authenticated:
-
-```javascript
-// Get user info to verify authentication
-CallMcpTool({
-  server: "atlassian",
-  toolName: "atlassianUserInfo",
-  arguments: {}
-})
+# Check JIRA CLI version
+jira version
 ```
 
+#### 2. JIRA Authentication
+```bash
+# Verify JIRA authentication
+jira me
+```
 **If authentication fails:**
-- The Atlassian MCP requires OAuth authentication
-- You'll be prompted to authenticate via browser
-- Follow the OAuth flow to grant access
-
-#### 2. Get Accessible Resources
-
-Fetch the list of accessible Atlassian sites:
-
-```javascript
-CallMcpTool({
-  server: "atlassian",
-  toolName: "getAccessibleAtlassianResources",
-  arguments: {}
-})
+```bash
+# Configure JIRA CLI
+jira init
+# Follow prompts to set:
+# - JIRA URL (e.g., https://company.atlassian.net)
+# - Username/Email
+# - API Token (from https://id.atlassian.com/manage-profile/security/api-tokens)
 ```
-
-Store the `cloudId` from the response for subsequent API calls.
 
 #### 3. X-Ray Integration Check
+```bash
+# Test X-Ray API access
+curl -H "Authorization: Bearer $JIRA_API_TOKEN" \
+     "$JIRA_URL/rest/raven/1.0/api/settings"
+```
+**If X-Ray check fails:**
+- Verify X-Ray is installed in your JIRA instance
+- Check if you have "Create Test" permissions in X-Ray
+- Ensure API token has appropriate scopes
 
-**Verify X-Ray is enabled:**
-- Check that X-Ray app is installed in your JIRA instance
-- Verify you have "Create Test" permissions in X-Ray
-- X-Ray test types should be available in the project
+#### 4. Required Environment Variables
+```bash
+# Check required environment variables
+if [[ -z "$JIRA_API_TOKEN" ]]; then
+    echo "❌ JIRA_API_TOKEN not set. Export your JIRA API token:"
+    echo "   export JIRA_API_TOKEN='your-api-token-here'"
+    exit 1
+fi
 
-**Note:** X-Ray test creation uses standard JIRA issue creation API with X-Ray-specific issue types.
-
-#### 4. Ticket Validation
-
-Verify the ticket exists and is accessible:
-
-```javascript
-CallMcpTool({
-  server: "atlassian",
-  toolName: "getJiraIssue",
-  arguments: {
-    cloudId: CLOUD_ID,
-    issueIdOrKey: TICKET_KEY,
-    fields: ["summary", "description", "customfield_*"],
-    expand: "names"
-  }
-})
+if [[ -z "$JIRA_URL" ]]; then
+    echo "❌ JIRA_URL not set. Export your JIRA URL:"
+    echo "   export JIRA_URL='https://company.atlassian.net'"
+    exit 1
+fi
 ```
 
-Check if ticket has acceptance criteria in description or custom fields.
+#### 5. Ticket and AC Validation
+```bash
+# Verify ticket exists and is accessible
+jira issue view TICKET-123 --plain
+
+# Check if ticket has ACs in description or custom fields
+TICKET_CONTENT=$(jira issue view TICKET-123 --plain)
+if [[ -n "$(echo "$TICKET_CONTENT" | grep -i 'acceptance criteria\|AC:')" ]]; then
+    echo "✅ Acceptance criteria found in ticket"
+else
+    echo "⚠️  No clear acceptance criteria found in ticket."
+    echo "   Will attempt to generate test cases from description and requirements"
+fi
+```
 
 ## Workflow
 
 ### Step 1: Extract Acceptance Criteria from JIRA Ticket
 
-1. **Fetch complete ticket details using Atlassian MCP:**
+1. **Fetch complete ticket details:**
+   ```bash
+   # Get ticket content including description, custom fields, and metadata
+   TICKET_DATA=$(jira issue view $TICKET --plain)
+   TICKET_SUMMARY=$(echo "$TICKET_DATA" | grep "SUMMARY" | cut -d: -f2-)
+   TICKET_DESCRIPTION=$(echo "$TICKET_DATA" | sed -n '/DESCRIPTION/,/ASSIGNEE/p')
+   ```
 
-```javascript
-const ticketData = CallMcpTool({
-  server: "atlassian",
-  toolName: "getJiraIssue",
-  arguments: {
-    cloudId: CLOUD_ID,
-    issueIdOrKey: TICKET_KEY,
-    fields: ["summary", "description", "project", "issuetype", "customfield_*"],
-    fieldsByKeys: true,
-    expand: "names",
-    responseContentFormat: "markdown"
-  }
-})
-```
-
-2. **Extract Acceptance Criteria from ticket fields:**
-
-Look for ACs in multiple locations (in order of priority):
-- Custom field "Acceptance Criteria" (search in `customfield_*` fields)
-- "Acceptance Criteria" section in description
-- Structured requirements (look for patterns: "AC1:", "- AC:", "Given...When...Then")
-- User story format ("As a...I want...So that")
-
-Parse the content and create an array of individual acceptance criteria:
-
-```javascript
-const ACS_ARRAY = [
-  { title: "AC1: User can login", content: "Given valid credentials, when user submits login form, then user is authenticated" },
-  { title: "AC2: Invalid login shows error", content: "Given invalid credentials, when user submits, then error message appears" }
-  // ... more ACs
-]
-```
-
-If no structured ACs found, provide guidance:
-```
-⚠️  No clear acceptance criteria found in ticket.
+2. **Extract Acceptance Criteria in memory:**
+   ```bash
+   # Look for AC patterns in multiple locations:
    
-   To use this command effectively, add acceptance criteria to your JIRA ticket in one of these formats:
-   1. Add to custom "Acceptance Criteria" field
-   2. Add section in description titled "Acceptance Criteria:"
-   3. Use numbered format: AC1:, AC2:, etc.
-   4. Use Gherkin format: Given...When...Then
-```
+   # 1. Custom field "Acceptance Criteria"
+   AC_CUSTOM_FIELD=$(echo "$TICKET_DATA" | grep -A 50 "Acceptance Criteria:")
+   
+   # 2. AC section in description
+   AC_IN_DESCRIPTION=$(echo "$TICKET_DESCRIPTION" | grep -A 20 -i "acceptance criteria\|^AC[0-9]\|^- AC")
+   
+   # 3. Structured requirements in description
+   REQUIREMENTS=$(echo "$TICKET_DESCRIPTION" | grep -A 20 -i "requirements\|user story\|as a.*i want")
+   
+   # Combine extracted ACs into array
+   readarray -t ACS_ARRAY <<< "$(echo -e "$AC_CUSTOM_FIELD\n$AC_IN_DESCRIPTION\n$REQUIREMENTS" | grep -v '^$')"
+   AC_COUNT=${#ACS_ARRAY[@]}
+   echo "Found $AC_COUNT acceptance criteria"
+   ```
 
 ### Step 2: Determine Test Case Format and Generate Content
 
-1. **Analyze AC content to suggest format:**
+1. **Format Selection Logic:**
+   ```bash
+   if [[ "$FORMAT" == "bdd" ]] || [[ -z "$FORMAT" && -n "$(grep -i 'given.*when.*then' ".xray-tests/$TICKET/acceptance-criteria.md")" ]]; then
+       echo "Using BDD (Gherkin) format"
+       TEST_FORMAT="bdd"
+   elif [[ "$FORMAT" == "manual" ]] || [[ -z "$FORMAT" ]]; then
+       echo "Using Manual test format"
+       TEST_FORMAT="manual"
+   fi
+   ```
 
-```javascript
-const hasGherkinPatterns = ACS_ARRAY.some(ac => 
-  ac.content.match(/given.*when.*then/i)
-)
+2. **Generate Test Cases for Each AC:**
 
-let suggestedFormat = hasGherkinPatterns ? "bdd" : "manual"
-```
+   **For BDD Format:**
+   ```gherkin
+   Feature: [TICKET] - [Summary]
+     As a [user type from ticket]
+     I want [main functionality]
+     So that [business value]
 
-2. **Ask user for format confirmation (if --format not specified):**
+   Background:
+     Given the system is in a valid state
+     And the user has appropriate permissions
 
-```
-Detected ${ACS_ARRAY.length} acceptance criteria.
-Suggested format: ${suggestedFormat} (${hasGherkinPatterns ? 'Gherkin patterns detected' : 'manual steps recommended'})
+   Scenario: [AC1 converted to scenario name]
+     Given [preconditions from AC]
+     When [action from AC]  
+     Then [expected result from AC]
+     
+   Scenario: [AC2 converted to scenario name]
+     Given [preconditions from AC]
+     When [action from AC]
+     Then [expected result from AC]
+   ```
 
-Proceed with ${suggestedFormat} format? (y/n/specify)
-```
+   **For Manual Format:**
+   ```
+   Test Case: [TICKET]-TC-001 - [AC1 Summary]
+   
+   Objective: Verify [what's being tested from AC]
+   
+   Preconditions:
+   - [Setup requirements from ticket context]
+   
+   Test Steps:
+   1. [Convert AC into actionable step]
+   2. [Next logical test action]
+   3. [Verification step]
+   
+   Expected Results:
+   1. [Expected outcome from AC]
+   2. [System behavior verification]
+   3. [Final validation]
+   ```
 
-3. **Generate test case content for each AC:**
+### Step 3: Generate and Create X-Ray Test Cases
 
-**For BDD Format:**
-```gherkin
-Feature: [TICKET] - [Summary]
-  As a [user type from ticket]
-  I want [main functionality]
-  So that [business value]
+Generate and create test cases directly in X-Ray for each acceptance criteria:
 
-Background:
-  Given the system is in a valid state
-  And the user has appropriate permissions
+```bash
+CREATED_TESTS=()
 
-Scenario: [AC title]
-  Given [preconditions from AC]
-  When [action from AC]
-  Then [expected result from AC]
-```
-
-**For Manual Format:**
-```
-Test Steps:
-1. [Action derived from AC]
-   Expected: [Expected result]
-2. [Verification step]
-   Expected: [Validation criteria]
-3. [Final confirmation]
-   Expected: [Success criteria]
-```
-
-### Step 3: Create X-Ray Test Cases Using Atlassian MCP
-
-For each acceptance criteria, create an X-Ray test case in JIRA:
-
-```javascript
-const createdTests = []
-
-for (const [index, ac] of ACS_ARRAY.entries()) {
-  const testNumber = String(index + 1).padStart(3, '0')
-  const testSummary = `${TICKET_KEY}-TC-${testNumber} - ${ac.title}`
-  
-  // Determine test type based on format
-  const testType = TEST_FORMAT === 'bdd' ? 'Cucumber' : 'Manual'
-  
-  // Get project metadata for X-Ray test type
-  const projectKey = TICKET_KEY.split('-')[0]
-  
-  // Get X-Ray test issue type ID
-  const projectMetadata = CallMcpTool({
-    server: "atlassian",
-    toolName: "getJiraProjectIssueTypesMetadata",
-    arguments: {
-      cloudId: CLOUD_ID,
-      projectKey: projectKey
-    }
-  })
-  
-  // Find X-Ray test issue type (look for "Test" issue type)
-  const testIssueType = projectMetadata.issueTypes.find(
-    type => type.name === 'Test' || type.name === 'X-Ray Test'
-  )
-  
-  if (!testIssueType) {
-    throw new Error(`X-Ray test issue type not found in project ${projectKey}. Ensure X-Ray is installed.`)
-  }
-  
-  // Prepare test case content
-  let testDescription = `Generated from JIRA ticket ${TICKET_KEY}\n\n**Original Acceptance Criteria:**\n${ac.content}`
-  let testSteps = []
-  
-  if (TEST_FORMAT === 'bdd') {
-    // For BDD, include Gherkin in description
-    const gherkinContent = `
-Feature: ${testSummary}
+# For each identified AC, generate test case content and create in X-Ray
+for i in "${!ACS_ARRAY[@]}"; do
+    AC_TEXT="${ACS_ARRAY[$i]}"
+    AC_TITLE=$(echo "$AC_TEXT" | head -1 | sed 's/^AC[0-9]*[:.]\s*//')
+    TEST_TITLE="${TICKET}-TC-$(printf "%03d" $((i+1))) - ${AC_TITLE}"
+    
+    if [[ "$TEST_FORMAT" == "bdd" ]]; then
+        # Generate BDD content in memory
+        GHERKIN_CONTENT=$(cat <<EOF
+Feature: $TEST_TITLE
 
   Background:
     Given the system is in a valid state
     And the user has appropriate permissions
 
-  Scenario: ${ac.title}
-    ${ac.content}
-    `.trim()
+  Scenario: $AC_TITLE
+    Given $(echo "$AC_TEXT" | grep -i 'given\|precondition' | head -1 | sed 's/.*given\|.*precondition//i' | xargs)
+    When $(echo "$AC_TEXT" | grep -i 'when\|user\|action' | head -1 | sed 's/.*when\|.*user\|.*action//i' | xargs)
+    Then $(echo "$AC_TEXT" | grep -i 'then\|should\|expected' | head -1 | sed 's/.*then\|.*should\|.*expected//i' | xargs)
+EOF
+)
+        
+        # Create BDD test case in X-Ray
+        JSON_PAYLOAD=$(jq -n \
+            --arg projectKey "${TICKET%%-*}" \
+            --arg summary "$TEST_TITLE" \
+            --arg description "Generated from JIRA ticket $TICKET acceptance criteria: $AC_TEXT" \
+            --arg cucumber "$GHERKIN_CONTENT" \
+            --arg ticket "$TICKET" \
+            '{
+                testType: "Cucumber",
+                projectKey: $projectKey,
+                summary: $summary,
+                description: $description,
+                steps: {cucumber: $cucumber},
+                labels: ["automated-generation", "ac-based", "bdd"],
+                issueLinks: [{type: "Test", inwardIssue: $ticket}]
+            }')
+    else
+        # Generate Manual test case content in memory
+        TEST_STEPS='[
+            {"step": "Navigate to the feature area mentioned in AC", "result": "Feature area is accessible"},
+            {"step": "Execute the action described in: '"$AC_TEXT"'", "result": "Action completes successfully"},
+            {"step": "Verify the expected outcome from AC", "result": "Expected behavior is observed"}
+        ]'
+        
+        # Create Manual test case in X-Ray  
+        JSON_PAYLOAD=$(jq -n \
+            --arg projectKey "${TICKET%%-*}" \
+            --arg summary "$TEST_TITLE" \
+            --arg description "Generated from JIRA ticket $TICKET acceptance criteria: $AC_TEXT" \
+            --argjson steps "$TEST_STEPS" \
+            --arg ticket "$TICKET" \
+            '{
+                testType: "Manual",
+                projectKey: $projectKey,
+                summary: $summary,
+                description: $description,
+                steps: $steps,
+                labels: ["automated-generation", "ac-based", "manual"],
+                issueLinks: [{type: "Test", inwardIssue: $ticket}]
+            }')
+    fi
     
-    testDescription += `\n\n**Gherkin Scenario:**\n\`\`\`gherkin\n${gherkinContent}\n\`\`\``
-  } else {
-    // For Manual, create structured test steps
-    testSteps = [
-      { 
-        step: `Navigate to feature area: ${ac.title}`,
-        result: "Feature area is accessible"
-      },
-      {
-        step: `Execute: ${ac.content}`,
-        result: "Action completes as specified in AC"
-      },
-      {
-        step: "Verify expected outcome from acceptance criteria",
-        result: "Expected behavior is observed and matches AC"
-      }
-    ]
-  }
-  
-  // Create X-Ray test case
-  try {
-    const createResult = CallMcpTool({
-      server: "atlassian",
-      toolName: "createJiraIssue",
-      arguments: {
-        cloudId: CLOUD_ID,
-        projectKey: projectKey,
-        issueType: testIssueType.name,
-        summary: testSummary,
-        description: testDescription,
-        labels: ["automated-generation", "ac-based", TEST_FORMAT],
-        // X-Ray specific fields would go here if needed
-        // For X-Ray test steps, you may need to use X-Ray REST API directly
-      }
-    })
+    # Create test case in X-Ray
+    echo "Creating test case: $TEST_TITLE..."
+    RESPONSE=$(curl -s -X POST \
+        -H "Authorization: Bearer $JIRA_API_TOKEN" \
+        -H "Content-Type: application/json" \
+        "$JIRA_URL/rest/raven/1.0/api/test" \
+        -d "$JSON_PAYLOAD")
     
-    const testKey = createResult.key
-    console.log(`✅ Created X-Ray test: ${testKey}`)
-    createdTests.push(testKey)
-    
-    // Link test to original JIRA ticket
-    CallMcpTool({
-      server: "atlassian",
-      toolName: "createIssueLink",
-      arguments: {
-        cloudId: CLOUD_ID,
-        linkType: "Tests", // or "Test" depending on your JIRA configuration
-        inwardIssueKey: TICKET_KEY,
-        outwardIssueKey: testKey,
-        comment: `Generated test case from acceptance criteria`
-      }
-    })
-    
-    console.log(`🔗 Linked ${testKey} to ${TICKET_KEY}`)
-    
-  } catch (error) {
-    console.error(`❌ Failed to create test case for AC ${index + 1}: ${error.message}`)
-  }
-}
+    TEST_KEY=$(echo "$RESPONSE" | jq -r '.key // empty')
+    if [[ -n "$TEST_KEY" && "$TEST_KEY" != "null" ]]; then
+        echo "✅ Created X-Ray test: $TEST_KEY"
+        CREATED_TESTS+=("$TEST_KEY")
+        
+        # Link test to original JIRA ticket
+        curl -s -X POST \
+            -H "Authorization: Bearer $JIRA_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            "$JIRA_URL/rest/api/2/issueLink" \
+            -d "{
+                \"type\": {\"name\": \"Test\"},
+                \"inwardIssue\": {\"key\": \"$TICKET\"},
+                \"outwardIssue\": {\"key\": \"$TEST_KEY\"}
+            }" > /dev/null
+        echo "🔗 Linked $TEST_KEY to $TICKET"
+    else
+        echo "❌ Failed to create test case for AC $((i+1))"
+        echo "Response: $RESPONSE"
+    fi
+done
 ```
 
-**Note on X-Ray Test Steps:** X-Ray stores test steps in custom fields. If the standard `createJiraIssue` doesn't support X-Ray test steps directly, you may need to:
-1. Create the issue first
-2. Use `editJiraIssue` to add X-Ray custom field data
-3. Or use the X-Ray REST API directly via `fetchAtlassian` MCP tool
+### Step 4: Display Results
 
-### Step 4: Handle Dry Run Mode
-
-If `--dry-run` flag is provided, skip the creation step and display what would be created:
-
-```
-🔍 DRY RUN MODE - No tests will be created
-
-Would create ${ACS_ARRAY.length} X-Ray test cases:
-
-${ACS_ARRAY.map((ac, i) => `
-Test ${i + 1}: ${TICKET_KEY}-TC-${String(i + 1).padStart(3, '0')}
-Summary: ${ac.title}
-Type: ${TEST_FORMAT}
-Content: ${ac.content}
-`).join('\n')}
-
-To create these tests, run without --dry-run flag.
+```bash
+# Display completion summary
+echo ""
+echo "✅ Generated ${#CREATED_TESTS[@]} X-Ray test cases from $AC_COUNT acceptance criteria"
+echo "✅ All tests linked to $TICKET"  
+echo "✅ Test format: $TEST_FORMAT"
+echo ""
+echo "Created tests:"
+for test_key in "${CREATED_TESTS[@]}"; do
+    echo "  - $test_key"
+done
+echo ""
+echo "View tests in X-Ray: $JIRA_URL/browse/$TICKET (see linked tests)"
 ```
 
-### Step 5: Display Results
+### Step 5: Summary and Completion
 
-```javascript
-console.log(`
-✅ Generated ${createdTests.length} X-Ray test cases from ${ACS_ARRAY.length} acceptance criteria
-✅ All tests linked to ${TICKET_KEY}
-✅ Test format: ${TEST_FORMAT}
+1. **Display completion summary:**
+   ```bash
+   echo "✅ Generated ${#CREATED_TESTS[@]} X-Ray test cases"
+   echo "✅ All tests linked to $TICKET"
+   echo "✅ Test format: $TEST_FORMAT"
+   echo ""
+   echo "Created tests:"
+   for test_key in "${CREATED_TESTS[@]}"; do
+     echo "  - $test_key"
+   done
+   ```
 
-Created tests:
-${createdTests.map(key => `  - ${key}`).join('\n')}
-
-View tests in JIRA: https://your-domain.atlassian.net/browse/${TICKET_KEY}
-(Check the "Links" section for associated test cases)
-`)
-```
+**Note:** No local files are created. All test cases are generated and created directly in X-Ray.
 
 ## Command Options
 
 - `--format=bdd|manual`: Force specific test case format (default: auto-detect from AC content)
-- `--dry-run`: Preview test cases without creating them in X-Ray
-- `--environment=ENV`: Set target test environment in test metadata (if supported by X-Ray configuration)
+- `--dry-run`: Generate test cases but don't create in X-Ray (output to files only)
+- `--environment=ENV`: Set target test environment in test metadata
 - `--component=COMP`: Override component detection from ticket
+
+## Output Files
+
+**No local files are created.** The command works entirely in memory and creates test cases directly in X-Ray.
+
+The only output is the X-Ray test cases created in your JIRA instance, properly linked to the original ticket.
+
+## Integration Points
+
+1. **JIRA Integration:**
+   - **Input:** Extracts ACs and requirements directly from JIRA ticket
+   - **Linking:** Creates issue links between generated X-Ray tests and original ticket
+   - **Metadata:** Uses ticket project key, components, and fix versions
+
+2. **X-Ray Integration:**
+   - **Test Creation:** Creates tests via X-Ray REST API with complete content
+   - **Content Upload:** Includes full Gherkin scenarios or detailed manual steps
+   - **Linking:** Establishes "Test" relationship between X-Ray tests and JIRA story
 
 ## Error Handling
 
-1. **Atlassian MCP Not Available:**
-   ```
-   ❌ Atlassian MCP not found or not authenticated.
-   
-   Please ensure:
-   1. Atlassian MCP plugin is installed in Claude Code
-   2. You've completed OAuth authentication
-   3. Run the authentication flow if prompted
-   ```
+1. **Ticket Access Issues:**
+   - Verify ticket exists and user has access
+   - Provide clear error messages with resolution steps
 
-2. **Ticket Access Issues:**
-   ```
-   ❌ Could not access ticket ${TICKET_KEY}
-   
-   Possible causes:
-   - Ticket doesn't exist
-   - You don't have permission to view this ticket
-   - Wrong cloud ID or project
-   ```
+2. **X-Ray API Failures:**
+   - Retry logic with exponential backoff
+   - Fall back to file output if API unavailable
+   - Clear error messages for permission issues
 
-3. **X-Ray Not Available:**
-   ```
-   ❌ X-Ray test issue type not found in project ${projectKey}
-   
-   Please ensure:
-   - X-Ray for JIRA is installed in your instance
-   - Project has X-Ray test issue types enabled
-   - You have permission to create X-Ray tests
-   ```
+3. **AC Extraction Failures:**
+   - Fall back to manual AC entry
+   - Provide guidance on AC format requirements
 
-4. **AC Extraction Failures:**
-   ```
-   ⚠️  No acceptance criteria found in ticket
-   
-   Add acceptance criteria to your ticket:
-   1. Use custom "Acceptance Criteria" field
-   2. Add section in description: "## Acceptance Criteria"
-   3. Use format: AC1:, AC2:, etc.
-   4. Use Gherkin: Given...When...Then
-   ```
+5. **AC Extraction Failures:**
+   - Fall back to manual AC entry if no patterns found
+   - Provide guidance on AC format requirements
 
-5. **Test Creation Failures:**
-   - Retry with exponential backoff
-   - Provide detailed error messages from API
-   - Suggest checking permissions and X-Ray configuration
+6. **Missing Content Issues:**
+   - **Issue**: No acceptance criteria found in ticket
+   - **Cause**: Ticket lacks structured AC content
+   - **Solution**: Provide guidance on where to add ACs in ticket
+   - **Manual Fix**: User adds ACs to ticket and re-runs command
 
 ## Example Usage
 
@@ -398,40 +372,18 @@ View tests in JIRA: https://your-domain.atlassian.net/browse/${TICKET_KEY}
 # Force BDD format
 /generate-xray-tests PROJ-123 --format=bdd
 
-# Force Manual format
+# Force Manual format  
 /generate-xray-tests PROJ-123 --format=manual
 
-# Dry run to preview generated content before creating in X-Ray
+# Dry run to review generated content before creating in X-Ray
 /generate-xray-tests PROJ-123 --dry-run
 
 # Create tests with specific environment metadata
 /generate-xray-tests PROJ-123 --environment=staging
 ```
 
-## Integration with Other Commands
-
-This command works well with:
-- `/collect-ac` - For extracting and refining acceptance criteria first
-- `/document-tests` - For documenting test coverage after creation
-
 ## Success Metrics
 
 - Number of X-Ray test cases successfully created
 - Successful linking between X-Ray tests and original JIRA ticket
 - Quality of generated test case content (scenarios/steps)
-- Reduction in manual test case creation time
-
-## Technical Notes
-
-**Atlassian MCP Tools Used:**
-- `atlassianUserInfo` - Verify authentication
-- `getAccessibleAtlassianResources` - Get cloud ID
-- `getJiraIssue` - Fetch ticket details
-- `createJiraIssue` - Create X-Ray test cases
-- `createIssueLink` - Link tests to original ticket
-- `getJiraProjectIssueTypesMetadata` - Get X-Ray test type ID
-
-**X-Ray Considerations:**
-- X-Ray tests are special JIRA issue types
-- Test steps may require X-Ray REST API for full functionality
-- Some X-Ray features may need direct API calls via `fetchAtlassian` MCP tool
