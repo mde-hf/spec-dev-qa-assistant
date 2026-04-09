@@ -13,7 +13,7 @@ Automate your entire QA workflow from acceptance criteria to verified tests with
 - ✅ **Multi-source AC Detection** - Automatically fetch ACs from JIRA, Confluence, and Figma
 - ✅ **Automated Test Generation** - Generate E2E, API, and unit tests from acceptance criteria
 - ✅ **X-Ray Test Case Generation** - Create X-Ray test cases directly from JIRA ticket ACs
-- ✅ **Developer Risk Analysis** - Calculate quality scores and identify risk areas by squad
+- ✅ **Squad Risk Analysis** - Calculate quality scores and identify risk areas by squad
 - ✅ **Platform Support** - Works with Web (Playwright, Cypress) and Mobile React Native (Maestro, Detox)
 - ✅ **Smart Selector Scanning** - Map test selectors across your codebase
 - ✅ **Interactive Verification** - Step-by-step AC verification with test execution
