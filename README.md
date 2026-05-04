@@ -12,6 +12,7 @@ Automate your entire QA workflow from acceptance criteria to verified tests with
 
 - ✅ **Multi-source AC Detection** - Automatically fetch ACs from JIRA, Confluence, and Figma
 - ✅ **Automated Test Generation** - Generate E2E, API, and unit tests from acceptance criteria
+- ✅ **Test User Creation** - Create test users in staging via backend APIs (no browser automation)
 - ✅ **X-Ray Test Case Generation** - Create X-Ray test cases directly from JIRA ticket ACs
 - ✅ **Squad Risk Analysis** - Calculate quality scores and identify risk areas by squad
 - ✅ **Platform Support** - Works with Web (Playwright, Cypress) and Mobile React Native (Maestro, Detox)
@@ -60,6 +61,7 @@ That's it! 🎉
 |---------|-------------|
 | `/collect-ac` | Collect acceptance criteria from JIRA, Confluence, and Figma |
 | `/generate-e2e-tests` | Generate automated tests (Web: Playwright/Cypress, Mobile: Maestro/Detox) |
+| `/create-test-user` | Create test users in staging environment via backend APIs |
 | `/generate-xray-tests` | Generate X-Ray test cases directly from JIRA ticket acceptance criteria |
 | `/document-tests` | Generate interactive HTML test coverage dashboard with visual gap analysis |
 | `/dev-risk-analysis` | Analyze developer quality metrics and risk scores by squad or JIRA project |
@@ -350,7 +352,34 @@ npx playwright test
 → Posted to JIRA
 ```
 
-### Example 3: Sprint Retrospective
+### Example 3: Create Test Users for E2E
+
+```bash
+# Create active US test user
+/create-test-user US active
+
+→ 🎯 Creating test user...
+→ ✅ User account created (ID: 12345678)
+→ ✅ Subscription created (ID: 87654321)
+→ ✅ Test user created successfully!
+
+📧 Email: test-user-1735564800@hellofresh.com
+🔑 Password: qwerty123
+📝 Saved to: app/fixtures/generated/test-users-us.json
+
+# Create cancelled German user with custom plan
+/create-test-user DE cancelled --plan=3-meals-4-people
+
+→ ✅ Subscription cancelled
+📦 Plan: 3 meals for 4 people
+📊 State: cancelled
+
+# Use in your E2E tests
+import users from './fixtures/generated/test-users-us.json';
+const testUser = users[0];
+```
+
+### Example 4: Sprint Retrospective
 
 ```bash
 /ac-quality-trends --sprint "Sprint 24"
