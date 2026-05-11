@@ -127,7 +127,7 @@ May require additional authentication steps. Use standard test card but be aware
 
 ## Response Format
 
-### Success (200 OK)
+### Success (200 OK) - Immediate Response
 
 ```json
 {
@@ -146,10 +146,45 @@ May require additional authentication steps. Use standard test card but be aware
 }
 ```
 
+### Success (200 OK) - Async Response
+
+Some markets return an async job ID instead of immediate subscription:
+
+```json
+{
+  "message": "",
+  "unique_code": "bf45860f-b1ce-916d-963a-96439e47054d"
+}
+```
+
+**When this happens:**
+1. The subscription is being created asynchronously
+2. Poll `GET /api/customers/me/subscriptions?country={MARKET}` every 2 seconds
+3. Wait up to 30 seconds for the subscription to appear
+4. Extract `subscriptionId` and `planId` from the items array
+
+**Polling Example:**
+```bash
+# After receiving unique_code, poll for subscription
+for i in {1..15}; do
+  sleep 2
+  SUBS=$(curl -s -X GET "https://gw.staging-k8s.hellofresh.io/api/customers/me/subscriptions?country=US" \
+    -H "Authorization: Bearer ${ACCESS_TOKEN}")
+  
+  COUNT=$(echo "$SUBS" | jq -r '.count')
+  if [[ "$COUNT" -gt 0 ]]; then
+    SUBSCRIPTION_ID=$(echo "$SUBS" | jq -r '.items[0].id')
+    PLAN_ID=$(echo "$SUBS" | jq -r '.items[0].customer_plan_id')
+    break
+  fi
+done
+```
+
 **Key Fields:**
 - `subscriptionId` or `id` - Subscription identifier
 - `planId` or `customer_plan_id` - Plan identifier (needed for cancel/pause)
 - `status` - Should be "active"
+- `unique_code` - Async job identifier (when async)
 
 ### Error Responses
 

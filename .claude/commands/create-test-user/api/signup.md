@@ -1,24 +1,37 @@
 # User Account Creation API
 
-Create a new user account via the signup API endpoint.
+Create a new user account via the customer management service register endpoint.
 
 ## Endpoint
 
 ```
-POST https://gw.staging-k8s.hellofresh.io/api/signup?country={MARKET}
+POST https://gw.staging-k8s.hellofresh.io/v1/register
 Content-Type: application/json
 ```
+
+**Note:** This endpoint uses the customer-management-service API (not the legacy `/api/signup` endpoint).
 
 ## Request Body
 
 ```json
 {
+  "business_division": {
+    "brand": "BRAND_HELLOFRESH",
+    "region_code": "US"
+  },
   "email": "test-user-1735564800@hellofresh.com",
   "password": "qwerty123",
-  "firstName": "Test",
-  "lastName": "User"
+  "first_name": "Test",
+  "last_name": "User"
 }
 ```
+
+**Required Fields:**
+- `business_division` - Object containing brand and region_code
+- `email` - User email address
+- `password` - User password (minimum 6 characters in staging)
+- `first_name` - User's first name (can be empty string)
+- `last_name` - User's last name (can be empty string)
 
 ## Email Generation Strategy
 
@@ -47,6 +60,57 @@ Use consistent test password: `qwerty123`
 - Minimum 6 characters
 - No special complexity requirements in staging
 
+## Business Division Format
+
+Each market requires a business_division object:
+
+```json
+{
+  "brand": "BRAND_HELLOFRESH",
+  "region_code": "US"
+}
+```
+
+**Brand values:**
+- `BRAND_HELLOFRESH` - Most HelloFresh markets (US, DE, GB, AU, CA, etc.)
+- `BRAND_GREENCHEF` - Green Chef (GN)
+- `BRAND_EVERYPLATE` - Every Plate (ER)
+- `BRAND_FACTOR` - Factor (FJ)
+- `BRAND_CHEFS_PLATE` - Chefs Plate (CK)
+- `BRAND_YOUFOODZ` - Youfoodz (YE)
+- `BRAND_GOODCHOP` - Good Chop (MR)
+
+**Region code:** Same as market code (US, DE, GB, etc.)
+
+### Helper Function
+
+```bash
+get_business_division() {
+  local market=$1
+  local brand=""
+  
+  case "$market" in
+    MR) brand="BRAND_GOODCHOP" ;;
+    GN) brand="BRAND_GREENCHEF" ;;
+    YE) brand="BRAND_YOUFOODZ" ;;
+    CK) brand="BRAND_CHEFS_PLATE" ;;
+    FJ) brand="BRAND_FACTOR" ;;
+    ER) brand="BRAND_EVERYPLATE" ;;
+    *) brand="BRAND_HELLOFRESH" ;;
+  esac
+  
+  cat <<EOF
+{
+  "brand": "${brand}",
+  "region_code": "${market}"
+}
+EOF
+}
+
+# Usage
+BUSINESS_DIVISION=$(get_business_division "US")
+```
+
 ## Response Format
 
 ### Success (200 OK)
@@ -57,16 +121,23 @@ Use consistent test password: `qwerty123`
   "refresh_token": "refresh_token_here...",
   "expires_in": 3600,
   "token_type": "Bearer",
-  "customerId": "12345678",
-  "customer_id": "12345678",
-  "email": "test-user-1735564800@hellofresh.com"
+  "user_data": {
+    "id": "12345678",
+    "email": "test-user-1735564800@hellofresh.com",
+    "blocked": false,
+    "country": "US",
+    "username": "test-user-1735564800@hellofresh.com",
+    "user_id": "12345678"
+  }
 }
 ```
 
 **Key Fields:**
 - `access_token` - Use for subsequent API calls (Authorization: Bearer {token})
-- `customerId` or `customer_id` - User identifier (may vary by market)
-- `expires_in` - Token validity in seconds (usually 1 hour)
+- `user_data.id` or `user_data.user_id` - Customer identifier
+- `expires_in` - Token validity in seconds (usually 3600 = 1 hour)
+
+**Note:** Customer ID can be in `user_data.id` or `user_data.user_id` depending on response format.
 
 ### Error Responses
 
@@ -119,22 +190,27 @@ Use consistent test password: `qwerty123`
 ### Using curl + jq
 
 ```bash
-RESPONSE=$(curl -s -X POST "https://gw.staging-k8s.hellofresh.io/api/signup?country=US" \
+# Get business division for market
+BUSINESS_DIVISION=$(get_business_division "$MARKET")
+
+# Call register endpoint
+RESPONSE=$(curl -s -X POST "https://gw.staging-k8s.hellofresh.io/v1/register" \
   -H 'content-type: application/json' \
   -d "{
+    \"business_division\": ${BUSINESS_DIVISION},
     \"email\": \"${EMAIL}\",
     \"password\": \"${PASSWORD}\",
-    \"firstName\": \"${FIRST_NAME}\",
-    \"lastName\": \"${LAST_NAME}\"
+    \"first_name\": \"${FIRST_NAME}\",
+    \"last_name\": \"${LAST_NAME}\"
   }")
 
 # Extract fields
 ACCESS_TOKEN=$(echo "$RESPONSE" | jq -r '.access_token')
-CUSTOMER_ID=$(echo "$RESPONSE" | jq -r '.customerId // .customer_id')
+CUSTOMER_ID=$(echo "$RESPONSE" | jq -r '.user_data.id // .user_data.user_id')
 
 # Validate
 if [[ -z "$ACCESS_TOKEN" ]] || [[ "$ACCESS_TOKEN" == "null" ]]; then
-  echo "❌ Signup failed: $RESPONSE"
+  echo "❌ Registration failed: $RESPONSE"
   exit 1
 fi
 ```
@@ -142,22 +218,44 @@ fi
 ### Using curl + python3
 
 ```bash
-RESPONSE=$(curl -s -X POST "https://gw.staging-k8s.hellofresh.io/api/signup?country=US" \
+# Get business division for market
+get_business_division() {
+  local market=$1
+  local brand=""
+  
+  case "$market" in
+    MR) brand="BRAND_GOODCHOP" ;;
+    GN) brand="BRAND_GREENCHEF" ;;
+    YE) brand="BRAND_YOUFOODZ" ;;
+    CK) brand="BRAND_CHEFS_PLATE" ;;
+    FJ) brand="BRAND_FACTOR" ;;
+    ER) brand="BRAND_EVERYPLATE" ;;
+    *) brand="BRAND_HELLOFRESH" ;;
+  esac
+  
+  echo "{\"brand\":\"${brand}\",\"region_code\":\"${market}\"}"
+}
+
+BUSINESS_DIVISION=$(get_business_division "$MARKET")
+
+# Call register endpoint
+RESPONSE=$(curl -s -X POST "https://gw.staging-k8s.hellofresh.io/v1/register" \
   -H 'content-type: application/json' \
   -d "{
+    \"business_division\": ${BUSINESS_DIVISION},
     \"email\": \"${EMAIL}\",
     \"password\": \"${PASSWORD}\",
-    \"firstName\": \"${FIRST_NAME}\",
-    \"lastName\": \"${LAST_NAME}\"
+    \"first_name\": \"${FIRST_NAME}\",
+    \"last_name\": \"${LAST_NAME}\"
   }")
 
 # Extract fields
 ACCESS_TOKEN=$(echo "$RESPONSE" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('access_token', ''))")
-CUSTOMER_ID=$(echo "$RESPONSE" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('customerId') or d.get('customer_id', ''))")
+CUSTOMER_ID=$(echo "$RESPONSE" | python3 -c "import sys, json; d=json.load(sys.stdin); user=d.get('user_data', {}); print(user.get('id') or user.get('user_id', ''))")
 
 # Validate
 if [[ -z "$ACCESS_TOKEN" ]]; then
-  echo "❌ Signup failed: $RESPONSE"
+  echo "❌ Registration failed: $RESPONSE"
   exit 1
 fi
 ```
@@ -165,24 +263,27 @@ fi
 ## Market-Specific Considerations
 
 ### Most Markets (US, DE, GB, AU, etc.)
-- Standard signup flow
+- Brand: `BRAND_HELLOFRESH`
+- Standard registration flow
 - No additional fields required
-- `customerId` returned as string
+- Customer ID in `user_data.id` or `user_data.user_id`
 
 ### Whitelabel Markets (MR, GN, YE, etc.)
-- May use `customer_id` instead of `customerId`
-- Response format mostly consistent
-- Check both field names when parsing
+- Use specific brand identifier (see business_division helper)
+- Response format same as HelloFresh
+- Region code matches market code
 
 ### Special Cases
 
 **Factor (FJ):**
-- Same endpoint, different brand context
-- May require `brandId` parameter
+- Brand: `BRAND_FACTOR`
+- Same endpoint and flow
+- Region code: `FJ`
 
 **Good Chop (MR):**
-- Uses standard flow
-- Returns whitelabel-specific customer data
+- Brand: `BRAND_GOODCHOP`
+- Region code: `MR`
+- Uses standard customer-management-service
 
 ## Security Notes
 
@@ -197,13 +298,17 @@ fi
 ### Test API Manually
 
 ```bash
-curl -v -X POST 'https://gw.staging-k8s.hellofresh.io/api/signup?country=US' \
+curl -v -X POST 'https://gw.staging-k8s.hellofresh.io/v1/register' \
   -H 'content-type: application/json' \
   -d '{
+    "business_division": {
+      "brand": "BRAND_HELLOFRESH",
+      "region_code": "US"
+    },
     "email": "manual-test@hellofresh.com",
     "password": "qwerty123",
-    "firstName": "Manual",
-    "lastName": "Test"
+    "first_name": "Manual",
+    "last_name": "Test"
   }'
 ```
 
