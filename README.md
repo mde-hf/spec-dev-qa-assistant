@@ -365,7 +365,6 @@ npx playwright test
 
 📧 Email: test-user-1735564800@hellofresh.com
 🔑 Password: qwerty123
-📝 Saved to: app/fixtures/generated/test-users-us.json
 
 # Create cancelled German user with custom plan
 /create-test-user DE cancelled --plan=3-meals-4-people
@@ -373,10 +372,6 @@ npx playwright test
 → ✅ Subscription cancelled
 📦 Plan: 3 meals for 4 people
 📊 State: cancelled
-
-# Use in your E2E tests
-import users from './fixtures/generated/test-users-us.json';
-const testUser = users[0];
 ```
 
 ### Example 4: Sprint Retrospective

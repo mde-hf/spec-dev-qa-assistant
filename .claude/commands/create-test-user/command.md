@@ -117,7 +117,7 @@ STAGING_PASSWORD="qwerty123"
 echo "🔐 Authenticating with staging credentials..."
 
 LOGIN_AUTH_RESPONSE=$(curl -s --max-time 10 -X POST \
-  "https://www-staging.hellofresh.com/gw/login?country=${MARKET,,}" \
+  "https://www-staging.hellofresh.com/gw/login?country=${MARKET:l}" \
   -H 'content-type: application/json' \
   -d "{\"username\":\"${STAGING_USERNAME}\",\"password\":\"${STAGING_PASSWORD}\"}")
 
@@ -150,8 +150,6 @@ echo "✅ Bearer token ready"
 **Optional Arguments:**
 - `--plan=X-meals-Y-people`: Plan configuration (default: 2-meals-2-people)
 - `--loyalty-tier=basic|gold|platinum`: Enroll in loyalty program
-- `--save-to=path`: Custom fixture path (default: app/fixtures/generated/test-users-{market}.json)
-- `--reuse-if-exists`: Check fixture for existing user with matching criteria
 
 **Validation:**
 
@@ -176,9 +174,6 @@ fi
 PLAN="${PLAN:-2-meals-2-people}"
 MEALS=$(echo "$PLAN" | cut -d'-' -f1)
 PEOPLE=$(echo "$PLAN" | cut -d'-' -f3)
-
-# Set fixture path
-FIXTURE_PATH="${SAVE_TO:-app/fixtures/generated/test-users-${MARKET,,}.json}"
 ```
 
 ### Step 2: Generate User Credentials
@@ -621,58 +616,6 @@ if [[ -n "$LOYALTY_TIER" ]]; then
 fi
 ```
 
-### Step 6: Save Credentials to Fixture
-
-See `output/credential-manager.md` for save logic.
-
-```bash
-echo "💾 Step 4/4: Saving credentials to fixture..."
-
-# Create fixture directory if needed
-mkdir -p "$(dirname "$FIXTURE_PATH")"
-
-# Build user data object
-USER_DATA=$(cat <<EOF
-{
-  "email": "${EMAIL}",
-  "password": "${PASSWORD}",
-  "customerId": "${CUSTOMER_ID}",
-  "subscriptionId": "${SUBSCRIPTION_ID}",
-  "planId": "${PLAN_ID}",
-  "market": "${MARKET}",
-  "state": "${STATE}",
-  "plan": "${PLAN}",
-  "loyaltyTier": "${LOYALTY_TIER}",
-  "createdAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "accessToken": "${ACCESS_TOKEN}"
-}
-EOF
-)
-
-# Append to fixture or create new
-if [[ -f "$FIXTURE_PATH" ]]; then
-  # Read existing, append new user
-  if [[ "$JSON_PARSER" == "jq" ]]; then
-    EXISTING=$(cat "$FIXTURE_PATH")
-    echo "$EXISTING" | jq ". + [$USER_DATA]" > "$FIXTURE_PATH"
-  else
-    python3 <<PYEOF
-import json
-with open('$FIXTURE_PATH', 'r') as f:
-    existing = json.load(f)
-existing.append($USER_DATA)
-with open('$FIXTURE_PATH', 'w') as f:
-    json.dump(existing, f, indent=2)
-PYEOF
-  fi
-else
-  # Create new fixture with single user
-  echo "[$USER_DATA]" | jq '.' > "$FIXTURE_PATH"
-fi
-
-echo "✅ Saved to: $FIXTURE_PATH"
-```
-
 ### Step 7: Display Summary
 
 ```bash
@@ -693,9 +636,6 @@ echo "📊 State:          ${STATE}"
 if [[ -n "$LOYALTY_TIER" ]]; then
   echo "🎁 Loyalty:        ${LOYALTY_TIER} tier"
 fi
-echo ""
-echo "📝 Credentials saved to:"
-echo "   ${FIXTURE_PATH}"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 ```
@@ -1075,32 +1015,6 @@ Creates active US user and attempts loyalty enrollment.
 /create-test-user --username "your-email@hellofresh.com" --password "your-password" --market GB --state new
 ```
 Creates UK user account without subscription.
-
-### Example 6: Custom Fixture Path
-```bash
-/create-test-user --username "your-email@hellofresh.com" --password "your-password" --market AU --state active --save-to "fixtures/my-tests/users.json"
-```
-Saves credentials to custom fixture location.
-
-## Output Format
-
-The fixture JSON contains:
-
-```json
-{
-  "email": "hfuser-11-153045@hf.com",
-  "password": "qwerty123",
-  "customerId": "12345678",
-  "subscriptionId": "87654321",
-  "planId": "plan_abc123",
-  "market": "US",
-  "state": "active",
-  "plan": "2-meals-2-people",
-  "loyaltyTier": "gold",
-  "createdAt": "2026-05-04T08:30:00Z",
-  "accessToken": "eyJhbGc..."
-}
-```
 
 ## Important Notes
 
