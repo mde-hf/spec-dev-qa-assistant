@@ -2,6 +2,24 @@
 
 All notable changes to the Spec Dev QA Assistant project.
 
+## [v2.3.0] - May 4, 2026
+
+### Added
+- **Test User Creation**: New `/create-test-user` command creates test users in staging via backend APIs
+  - Supports all HelloFresh markets (US, DE, GB, AU, CA, etc.) and whitelabels (Good Chop, Green Chef, Factor, etc.)
+  - Multiple user states: new (no subscription), active, cancelled, paused
+  - Optional loyalty enrollment with tier selection
+  - Saves credentials to JSON fixtures for E2E test reuse
+  - VPN connectivity check and validation
+  - No browser automation required - pure API approach
+
+### Documentation
+- Added `/create-test-user` to README Available Commands table
+- Added usage examples in README
+- Created comprehensive command documentation with API details, market configs, and helper functions
+
+---
+
 ## [v2.1.0] - March 22, 2026
 
 ### Added
