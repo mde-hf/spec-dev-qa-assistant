@@ -61,7 +61,7 @@ That's it! 🎉
 |---------|-------------|
 | `/collect-ac` | Collect acceptance criteria from JIRA, Confluence, and Figma |
 | `/generate-e2e-tests` | Generate automated tests (Web: Playwright/Cypress, Mobile: Maestro/Detox) |
-| `/create-test-user` | Create test users in staging environment via backend APIs |
+| `/create-test-user` | Create US test users in staging environment via backend APIs |
 | `/generate-xray-tests` | Generate X-Ray test cases directly from JIRA ticket acceptance criteria |
 | `/document-tests` | Generate interactive HTML test coverage dashboard with visual gap analysis |
 | `/dev-risk-analysis` | Analyze developer quality metrics and risk scores by squad or JIRA project |
@@ -355,23 +355,22 @@ npx playwright test
 ### Example 3: Create Test Users for E2E
 
 ```bash
-# Create active US test user
-/create-test-user US active
+# Create new US test user (no subscription)
+/create-test-user
 
 → 🎯 Creating test user...
 → ✅ User account created (ID: 12345678)
-→ ✅ Subscription created (ID: 87654321)
 → ✅ Test user created successfully!
 
 📧 Email: test-user-1735564800@hellofresh.com
 🔑 Password: qwerty123
 
-# Create cancelled German user with custom plan
-/create-test-user DE cancelled --plan=3-meals-4-people
+# Create active US user with subscription
+/create-test-user --state active
 
-→ ✅ Subscription cancelled
-📦 Plan: 3 meals for 4 people
-📊 State: cancelled
+→ ✅ Subscription created (ID: 87654321)
+📦 Plan: 2 meals for 2 people
+📊 State: active
 ```
 
 ### Example 4: Sprint Retrospective

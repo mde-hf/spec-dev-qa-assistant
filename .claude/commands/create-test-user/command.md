@@ -1,12 +1,9 @@
 ---
 name: /create-test-user
-argument-hint: '--market <code> [--state new]'
-description: Create test users in staging with auto-authentication
+argument-hint: '[--state new]'
+description: Create US test users in staging with auto-authentication
 mode: single-agent
 parameters:
-  - name: market
-    description: "Target market code (US, GB, DE, AU, CA, etc.)"
-    required: true
   - name: state
     description: "User subscription state: new (no subscription), active, cancelled, or paused"
     required: false
@@ -18,9 +15,6 @@ parameters:
   - name: loyalty_tier
     description: "Loyalty tier (bronze, silver, gold, platinum)"
     required: false
-  - name: save_to
-    description: "Custom path for fixture file"
-    required: false
 dependencies:
   - curl (required)
   - jq or python3 (required for JSON parsing)
@@ -30,13 +24,12 @@ dependencies:
 # Create Test User
 
 ## Purpose
-Create test users in staging environment using direct backend API calls with automatic authentication from username/password.
+Create US test users in staging environment using direct backend API calls with automatic authentication from username/password.
 
 **Features:**
 - Auto-generates bearer token from your staging credentials
 - Creates user accounts (with optional subscriptions)
-- Supports all HelloFresh markets
-- Saves credentials to fixture files for E2E tests
+- US market only
 
 **Base URL**: `https://www-staging.hellofresh.com`
 
@@ -57,14 +50,11 @@ Create test users in staging environment using direct backend API calls with aut
 
 ## Usage
 
-Run the command with just the market parameter:
+Run the command:
 
 ```bash
-/create-test-user --market US
+/create-test-user
 ```
-
-**Required Parameters:**
-- `--market`: Market code (US, GB, DE, AU, etc.)
 
 **Optional Parameters:**
 - `--state`: Account type - default: `new` (no subscription)
@@ -76,8 +66,6 @@ Run the command with just the market parameter:
 
 **Authentication:**
 Uses hardcoded staging credentials (`er+391+1@hf.com` / `qwerty123`) to automatically generate bearer tokens. No manual authentication required.
-  - `cancelled`: With cancelled subscription
-  - `paused`: With paused subscription
 - `--plan`: Subscription plan - default: 2-meals-2-people
 - `--token`: Use existing bearer token instead of username/password
 
@@ -116,8 +104,10 @@ STAGING_PASSWORD="qwerty123"
 
 echo "🔐 Authenticating with staging credentials..."
 
+MARKET="US"
+
 LOGIN_AUTH_RESPONSE=$(curl -s --max-time 10 -X POST \
-  "https://www-staging.hellofresh.com/gw/login?country=${MARKET:l}" \
+  "https://www-staging.hellofresh.com/gw/login?country=us" \
   -H 'content-type: application/json' \
   -d "{\"username\":\"${STAGING_USERNAME}\",\"password\":\"${STAGING_PASSWORD}\"}")
 
@@ -143,25 +133,16 @@ echo "✅ Bearer token ready"
 
 ### Step 1: Parse Input & Validate
 
-**Required Arguments:**
-- `<market>`: Market code (US, DE, GB, AU, CA, MR, GN, etc.)
-- `<state>`: User state (new, active, cancelled, paused)
-
 **Optional Arguments:**
+- `--state`: User state (new, active, cancelled, paused) - default: new
 - `--plan=X-meals-Y-people`: Plan configuration (default: 2-meals-2-people)
 - `--loyalty-tier=basic|gold|platinum`: Enroll in loyalty program
 
 **Validation:**
 
-See `config/markets.md` for valid market codes and configuration.
-
 ```bash
-# Validate market
-if ! validate_market "$MARKET"; then
-  echo "❌ Invalid market: $MARKET"
-  echo "Supported markets: US, DE, GB, AU, CA, NL, BE, AT, CH, FR, IT, ES, SE, DK, NO, IE, NZ, MR, GN, YE, CK, FJ, ER, AO, CG, CF, KN"
-  exit 1
-fi
+# Market is hardcoded to US
+MARKET="US"
 
 # Validate state
 if [[ ! "$STATE" =~ ^(new|active|cancelled|paused)$ ]]; then
@@ -946,13 +927,6 @@ EOF
 EOF
   fi
 }
-
-# Validate market code
-validate_market() {
-  local market=$1
-  local valid_markets="US DE GB AU CA NL BE AT CH FR IT ES SE DK NO IE NZ MR GN YE CK FJ ER AO CG CF KN"
-  echo "$valid_markets" | grep -qw "$market"
-}
 ```
 
 ## Error Handling
@@ -965,20 +939,14 @@ validate_market() {
    → Connect to staging VPN and try again
    ```
 
-2. **Invalid Market:**
-   ```
-   ❌ Invalid market: XX
-   → Use valid market code (see config/markets.md)
-   ```
-
-3. **API Error:**
+2. **API Error:**
    ```
    ❌ Failed to create user account
    Response: {"error": "..."}
    → Check API response for details
    ```
 
-4. **Subscription Creation Failed:**
+3. **Subscription Creation Failed:**
    ```
    ❌ Failed to create subscription
    → May need to update test payment method or address
@@ -986,71 +954,56 @@ validate_market() {
 
 ## Usage Examples
 
-### Example 1: Basic Active User (Username/Password - Recommended)
+### Example 1: Basic New User (No Subscription - Default)
 ```bash
-/create-test-user --username "your-email@hellofresh.com" --password "your-password" --market US
+/create-test-user
 ```
-Creates active US user with default 2-meals-2-people plan using automatic token generation.
+Creates US user account without subscription (fastest option).
 
-### Example 2: With Bearer Token (Manual)
+### Example 2: Active User with Subscription
 ```bash
-/create-test-user --token "YOUR_BEARER_TOKEN" --market US
+/create-test-user --state active
 ```
-Creates active US user using manually provided bearer token.
+Creates US user with active subscription (default 2-meals-2-people plan).
 
 ### Example 3: Cancelled User with Custom Plan
 ```bash
-/create-test-user --username "your-email@hellofresh.com" --password "your-password" --market DE --state cancelled --plan "3-meals-4-people"
+/create-test-user --state cancelled --plan "3-meals-4-people"
 ```
-Creates German user with 3 meals for 4 people, then cancels.
+Creates US user with 3 meals for 4 people, then cancels.
 
 ### Example 4: Loyalty-Enrolled User
 ```bash
-/create-test-user --username "your-email@hellofresh.com" --password "your-password" --market US --state active --loyalty-tier "gold"
+/create-test-user --state active --loyalty-tier "gold"
 ```
 Creates active US user and attempts loyalty enrollment.
 
-### Example 5: New User (No Subscription)
+### Example 5: Paused Subscription
 ```bash
-/create-test-user --username "your-email@hellofresh.com" --password "your-password" --market GB --state new
+/create-test-user --state paused
 ```
-Creates UK user account without subscription.
+Creates US user with paused subscription.
 
 ## Important Notes
 
 1. **VPN Required:** Must be connected to staging VPN
 2. **Unique Emails:** Uses timestamp to ensure unique emails
-3. **Test Cards:** Uses test payment methods (see config/addresses.md)
+3. **Test Cards:** Uses test payment methods for US market
 4. **Payment Tokens:** Uses official Braintree sandbox nonces ([Braintree Testing Docs](https://developer.paypal.com/braintree/docs/reference/general/testing/ruby/#payment-method-nonces))
 5. **Meal Preferences:** Cart includes `"chefschoice"` preset (validated via shopping-platform-service for US market)
 6. **State Changes:** Cancel/pause operations are destructive
-7. **Fixture Management:** Add `fixtures/generated/` to `.gitignore`
-8. **Access Tokens:** Tokens expire, use promptly for API testing
-9. **Profile-Service Validation:** Uses shopping-platform-service API to ensure valid presets per market
+7. **Access Tokens:** Tokens expire, use promptly for API testing
+8. **US Only:** Currently only supports US market
 
 ## Payment Test Values
 
-The command uses official payment processor test values:
+The command uses official payment processor test values for US market:
 
-**Braintree (US, MR, GN, FJ, ER, CG):**
+**Braintree (US):**
 - `fake-valid-nonce` - Static sandbox nonce (never expires)
 - Official Braintree test value for sandbox transactions
 
-**Adyen (Most International Markets):**
-- `test_4111111111111111` - Encrypted card format
-- `test_` prefix signals sandbox mode
-
-**ProcessOut (IT, SE, BE, DE, AT, DK, ES, CH, AU):**
-- `card_test_4242424242424242` - Test card token
-- `card_test_` prefix for sandbox
-
 Reference: [Braintree Testing Documentation](https://developer.paypal.com/braintree/docs/reference/general/testing/ruby/#payment-method-nonces)
-
-## Supported Markets
-
-See `config/markets.md` for complete list:
-- **Meal Kits:** US, DE, GB, AU, CA, NL, BE, AT, CH, FR, IT, ES, SE, DK, NO, IE, NZ
-- **Whitelabels:** MR (Good Chop), GN (Green Chef), YE (Youfoodz), CK (Chefs Plate), FJ (Factor), ER (Every Plate)
 
 ## Related Commands
 
