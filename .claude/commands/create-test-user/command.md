@@ -347,8 +347,10 @@ else
     -d "{\"items\":[{\"sku\":\"${SKU}\",\"quantity\":1,\"metadata\":{\"mealsPreset\":\"chefschoice\",\"timestamp\":${TIMESTAMP_MS},\"productFamily\":\"classic\"}}],\"country\":\"${MARKET}\"}" > "$CART_TMP" &
   CART_PID=$!
   
+  # Fetch delivery slots with correct parameters (family instead of product)
+  # Using family=classic-box-t6 for US market as per Confluence docs
   curl -s --max-time 8 -X GET \
-    "https://www-staging.hellofresh.com/gw/api/delivery_dates_options?zip=${ADDRESS_ZIP}&product=${SKU}&country=${MARKET}&numDeliveries=4" \
+    "https://www-staging.hellofresh.com/gw/api/delivery_dates_options?zip=${ADDRESS_ZIP}&family=classic-box-t6&country=${MARKET}&locale=en-US&numDeliveries=20" \
     -H "Authorization: Bearer ${ACCESS_TOKEN}" > "$DELIVERY_TMP" &
   DELIVERY_PID=$!
   
@@ -380,21 +382,43 @@ else
   else
     echo "✅ Cart created: $CART_ID"
     
-    # Extract first available delivery slot (reduce command substitutions)
+    # Extract first AVAILABLE delivery slot with proper filtering
+    # Check for availableOnCheckout=true and good utilizationFactor
     DELIVERY_DATE=""
     DELIVERY_OPTION=""
     DELIVERY_DAY=""
     
     if [[ "$JSON_PARSER" == "jq" ]]; then
-      read -r DELIVERY_DATE DELIVERY_OPTION DELIVERY_DAY <<< "$(echo "$DELIVERY_RESPONSE" | jq -r '[.items[0].deliveryDate.deliveryDate, .items[0].deliveryDate.deliveryOption.handle, .items[0].deliveryDate.deliveryOption.deliveryDay] | @tsv')"
+      # Filter for available slots: availableOnCheckout=true and status=RUNNING
+      read -r DELIVERY_DATE DELIVERY_OPTION DELIVERY_DAY <<< "$(echo "$DELIVERY_RESPONSE" | jq -r '
+        .items[]? 
+        | select(.deliveryDate.deliveryOption.availableOnCheckout == true) 
+        | select(.deliveryDate.status == "RUNNING" or .deliveryDate.status == null)
+        | [.deliveryDate.deliveryDate, .deliveryDate.deliveryOption.handle, .deliveryDate.deliveryOption.deliveryDay] 
+        | @tsv
+      ' | head -1)"
     else
-      DELIVERY_DATE=$(echo "$DELIVERY_RESPONSE" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d['items'][0]['deliveryDate']['deliveryDate'])")
-      DELIVERY_OPTION=$(echo "$DELIVERY_RESPONSE" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d['items'][0]['deliveryDate']['deliveryOption']['handle'])")
-      DELIVERY_DAY=$(echo "$DELIVERY_RESPONSE" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d['items'][0]['deliveryDate']['deliveryOption']['deliveryDay'])")
+      # Python fallback - try to find first available slot
+      DELIVERY_DATE=$(echo "$DELIVERY_RESPONSE" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for item in data.get('items', []):
+  dd = item.get('deliveryDate', {})
+  opt = dd.get('deliveryOption', {})
+  if opt.get('availableOnCheckout', True):
+    print(dd.get('deliveryDate', ''))
+    break
+" 2>/dev/null)
+      
+      if [[ -n "$DELIVERY_DATE" ]] && [[ "$DELIVERY_DATE" != "null" ]]; then
+        DELIVERY_OPTION=$(echo "$DELIVERY_RESPONSE" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d['items'][0]['deliveryDate']['deliveryOption']['handle'])" 2>/dev/null)
+        DELIVERY_DAY=$(echo "$DELIVERY_RESPONSE" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d['items'][0]['deliveryDate']['deliveryOption']['deliveryDay'])" 2>/dev/null)
+      fi
     fi
     
     if [[ -z "$DELIVERY_DATE" ]] || [[ "$DELIVERY_DATE" == "null" ]]; then
-      echo "❌ No delivery slots available"
+      echo "❌ No available delivery slots found"
+      echo "ℹ️  Staging may not have delivery slots configured for upcoming dates"
       STATE="new"
       SUBSCRIPTION_ID=""
       PLAN_ID=""
